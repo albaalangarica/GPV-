@@ -9,7 +9,7 @@
 <script>
 (function(){
 const seed=[{id:1,title:'Revisar enmiendas a la ley de transparencia',area:'Justicia',when:'Hoy',priority:'Urgente',done:false},{id:2,title:'Preparar intervención para comisión de Justicia',area:'Justicia',when:'Mañana',priority:'Urgente',done:false},{id:3,title:'Recopilar datos sobre inversión en cultura',area:'Cultura',when:'En 3 días',priority:'Pronto',done:false}];
-let tasks;try{tasks=JSON.parse(localStorage.getItem('gpv_tasks_v1'))||seed}catch(e){tasks=seed}let tab='Inicio';let agendaFilter='Grupo';let homeTaskFilter='Urgente';const app=document.getElementById('app');
+let tasks;try{tasks=JSON.parse(localStorage.getItem('gpv_tasks_v1'))||seed}catch(e){tasks=seed}let tab='Inicio';let agendaFilters=new Set(['Grupo','Plenos y comisiones','Visitas']);let homeTaskFilter='Urgente';const app=document.getElementById('app');
 function save(){localStorage.setItem('gpv_tasks_v1',JSON.stringify(tasks))}
 function card(title,extra,body){return `<section class="card"><div class="cardtitle"><h3>${title}</h3><span>${extra||''}</span></div>${body}</section>`}
 function taskHTML(t){return `<div class="task ${t.done?'done':''}"><button class="check ${t.done?'done':''}" data-toggle="${t.id}" aria-label="Completar tarea"></button><div><b>${esc(t.title)}</b><small>${esc(t.area)} · ${esc(t.when)}</small></div><span class="badge">${esc(t.priority)}</span></div>`}
@@ -17,12 +17,12 @@ function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;',
 function agenda(){
 const items=[
 {type:'Grupo',date:'9 sep',time:'12:00',title:'Reunión de grupo',place:'Parlamento Vasco'},
-{type:'Plenos',date:'17 sep',time:'09:30',title:'Pleno · Debate de política general',place:'Salón de sesiones'},
-{type:'Plenos',date:'24 sep',time:'09:30',title:'Pleno ordinario',place:'Salón de sesiones'},
+{type:'Plenos y comisiones',date:'17 sep',time:'09:30',title:'Pleno · Debate de política general',place:'Salón de sesiones'},
+{type:'Plenos y comisiones',date:'24 sep',time:'09:30',title:'Pleno ordinario',place:'Salón de sesiones'},
 {type:'Visitas',date:'29 sep',time:'10:30',title:'Visita institucional',place:'Por confirmar'}
 ];
-const visible=items.filter(x=>x.type===agendaFilter);
-const pills=['Grupo','Plenos','Visitas'].map(x=>`<button type="button" class="pill ${agendaFilter===x?'active':''}" data-agenda-filter="${x}">${x}</button>`).join('');
+const visible=items.filter(x=>agendaFilters.has(x.type));
+const pills=['Grupo','Plenos y comisiones','Visitas'].map(x=>`<button type="button" class="pill ${agendaFilters.has(x)?'active':''}" data-agenda-filter="${x}" aria-pressed="${agendaFilters.has(x)}">${x}</button>`).join('');
 const rows=visible.length?visible.map(x=>`<div class="row"><div class="date">${x.date}\n${x.time}</div><div><b>${esc(x.title)}</b><small>${esc(x.place)}</small></div></div>`).join(''):`<div class="row"><div></div><div><small>Sin citas en esta categoría.</small></div></div>`;
 return card('AGENDA','Próximas citas',`<div class="pills">${pills}</div>${rows}`)
 }
@@ -36,7 +36,7 @@ return `<section class="alert"><h3>VENCIMIENTOS</h3><p><b>Fortalecer la pelota v
 }
 function tareas(){let out=`<div class="taskhead"><h2>Tareas</h2><button id="newTask">＋ Nueva</button></div>`;['Urgente','Pronto','Cuando pueda'].forEach(p=>{const a=tasks.filter(x=>x.priority===p&&!x.done);if(a.length)out+=`<h3 class="group-title">${p.toUpperCase()} · ${a.length}</h3><div class="taskbox">${a.map(taskHTML).join('')}</div>`});const done=tasks.filter(x=>x.done);if(done.length)out+=`<h3 class="group-title">COMPLETADAS · ${done.length}</h3><div class="taskbox">${done.map(taskHTML).join('')}</div>`;return out}
 function render(){app.innerHTML=`<header><div class="eyebrow"><b>GPV</b> Dashboard parlamentario</div><h1>Santi López</h1><span>Parlamentario</span></header><main>${tab==='Inicio'?inicio():tab==='Tareas'?tareas():`<div class="soon"><h2>${tab}</h2><p>Módulo preparado para la siguiente fase.</p></div>`}</main><nav class="bottomnav">${[['Inicio','⌂'],['Radar','◎'],['Iniciativas','▤'],['Tareas','☑'],['Agenda','▣']].map(([n,i])=>`<button data-tab="${n}" class="${tab===n?'active':''}"><span>${i}</span><small>${n}</small></button>`).join('')}</nav><div id="modal"></div>`;bind()}
-function bind(){document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{tab=b.dataset.go;render()});document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{const id=Number(b.dataset.toggle);tasks=tasks.map(t=>t.id===id?{...t,done:!t.done}:t);save();render()});document.querySelectorAll('[data-agenda-filter]').forEach(b=>b.onclick=()=>{agendaFilter=b.dataset.agendaFilter;render()});document.querySelectorAll('[data-task-filter]').forEach(b=>b.onclick=()=>{homeTaskFilter=b.dataset.taskFilter;render()});const n=document.getElementById('newTask');if(n)n.onclick=openModal}
+function bind(){document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{tab=b.dataset.go;render()});document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{const id=Number(b.dataset.toggle);tasks=tasks.map(t=>t.id===id?{...t,done:!t.done}:t);save();render()});document.querySelectorAll('[data-agenda-filter]').forEach(b=>b.onclick=()=>{const f=b.dataset.agendaFilter;if(agendaFilters.has(f))agendaFilters.delete(f);else agendaFilters.add(f);render()});document.querySelectorAll('[data-task-filter]').forEach(b=>b.onclick=()=>{homeTaskFilter=b.dataset.taskFilter;render()});const n=document.getElementById('newTask');if(n)n.onclick=openModal}
 function openModal(){document.getElementById('modal').innerHTML=`<div class="modal"><div class="sheet"><h2>Nueva tarea</h2><input id="taskText" placeholder="¿Qué hay que hacer?" maxlength="160"><select id="taskPriority"><option>Pronto</option><option>Urgente</option><option>Cuando pueda</option></select><select id="taskArea"><option>Justicia</option><option>Cultura</option><option>Movilidad sostenible</option><option>Otros</option></select><div class="actions"><button class="primary" id="addTask">Añadir tarea</button><button id="cancelTask">Cancelar</button></div></div></div>`;document.getElementById('cancelTask').onclick=()=>document.getElementById('modal').innerHTML='';document.getElementById('addTask').onclick=()=>{const text=document.getElementById('taskText').value.trim();if(!text)return;tasks.push({id:Date.now(),title:text,area:document.getElementById('taskArea').value,when:'Sin fecha',priority:document.getElementById('taskPriority').value,done:false});save();render()}}
 render();
 })();
