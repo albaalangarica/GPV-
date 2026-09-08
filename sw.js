@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gpv-v2';
+const CACHE_NAME = 'gpv-v4-layout-private-tasks';
 
 const APP_FILES = [
   './',
@@ -34,7 +34,11 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    fetch(event.request)
+    fetch(
+      event.request.mode === 'navigate'
+        ? new Request(event.request, { cache: 'reload' })
+        : event.request
+    )
       .then(response => {
         const copy = response.clone();
 
