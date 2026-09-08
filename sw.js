@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gpv-v1';
+const CACHE_NAME = 'gpv-v2';
 
 const APP_FILES = [
   './',
