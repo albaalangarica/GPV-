@@ -1,0 +1,42 @@
+GPV · CAMBIOS DE DOCUMENTOS EN LA APP
+=====================================
+
+ARCHIVO 1 · index.html
+----------------------
+Sube index.html al repositorio de GitHub sustituyendo el index actual.
+
+Incluye:
+- Panel general: desplegable con los 5 últimos documentos del Drive compartido GPV.
+- Panel personal de Ainhoa, Ana, Muriel y Álvaro: enlace directo a su carpeta + sus 5 últimos documentos.
+- Panel general de Santi: enlace directo a su carpeta.
+- Conserva el resto de cambios del index que ya estábamos usando.
+
+ARCHIVO 2 · DocumentosDrive.gs
+------------------------------
+ESTE ARCHIVO NO SE SUBE A GITHUB.
+Hay que añadirlo al proyecto de Google Apps Script que ya usa la app.
+
+Pasos:
+1. Abre el proyecto de Apps Script actual.
+2. Pulsa + > Secuencia de comandos.
+3. Ponle, por ejemplo, el nombre DocumentosDrive.
+4. Pega el contenido completo de DocumentosDrive.gs.
+5. Guarda.
+6. Selecciona la función instalarSincronizacionDocumentosGPV.
+7. Pulsa Ejecutar y concede permisos de Drive y Sheets si Google los pide.
+
+A partir de ese momento:
+- Se actualiza automáticamente cada 5 minutos.
+- La pestaña "Nuevos documentos" guarda los 5 documentos generales más recientes.
+- La pestaña "Documentos personales" guarda los 5 últimos de cada carpeta personal.
+- Se ordena por fecha de creación/subida, no por última modificación.
+
+CARPETAS CONFIGURADAS
+---------------------
+Ainhoa Domaica: AINHOA
+Ana Morales: ANA
+Muriel Larrea: MURIEL
+Álvaro Gotxi: ÁLVARO
+Santi López: SANTI
+
+No hace falta subir ningún otro archivo a GitHub.
