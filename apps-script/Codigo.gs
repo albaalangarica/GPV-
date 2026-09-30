@@ -443,7 +443,7 @@ function cancelarEvento(data) {
 
 // Carpeta raíz del Repositorio GPV en Drive. La app busca por título en la pestaña
 // Repositorio_indice, que se rellena recorriendo esta carpeta y todas sus subcarpetas.
-const REPOSITORIO_FOLDER_ID = '1mmgAD6Qx-FnXC97IVSB6D9kOkMikt43j';
+const REPOSITORIO_FOLDER_ID = '16WkkpsQcDCGFxNqmV8bH_7JFKzJRG_Nf';
 const SHEET_REPOSITORIO = 'Repositorio_indice';
 
 // Ejecutar UNA VEZ a mano desde el editor: pide permiso de Drive, crea el índice
@@ -478,7 +478,8 @@ function actualizarIndiceRepositorio() {
         actual.ruta || 'Repositorio',
         Utilities.formatDate(f.getLastUpdated(), tz, 'dd/MM/yyyy'),
         tipoDocumento(f.getMimeType()),
-        f.getLastUpdated().getTime()
+        Utilities.formatDate(f.getDateCreated(), tz, 'dd/MM/yyyy'),
+        f.getDateCreated().getTime()
       ]);
     }
     const subs = actual.folder.getFolders();
@@ -497,10 +498,12 @@ function actualizarIndiceRepositorio() {
   if (!completo && sheet && sheet.getLastRow() > filas.length + 1) return;
   if (!sheet) sheet = ss.insertSheet(SHEET_REPOSITORIO);
 
-  filas.sort((a, b) => b[5] - a[5]);
-  const datos = [['Título', 'Enlace', 'Carpeta', 'Modificado', 'Tipo']].concat(filas.map(r => r.slice(0, 5)));
+  // Los más recientes (por fecha de subida) primero: la app muestra los primeros como
+  // "Últimos documentos del repositorio".
+  filas.sort((a, b) => b[6] - a[6]);
+  const datos = [['Título', 'Enlace', 'Carpeta', 'Modificado', 'Tipo', 'Creado']].concat(filas.map(r => r.slice(0, 6)));
   sheet.clearContents();
-  sheet.getRange(1, 1, datos.length, 5).setNumberFormat('@').setValues(datos);
+  sheet.getRange(1, 1, datos.length, 6).setNumberFormat('@').setValues(datos);
   sheet.setFrozenRows(1);
 }
 

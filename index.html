@@ -1072,14 +1072,14 @@ function bancoDatos(){
 // ---- Buscador del repositorio ----
 // El script de Google guarda en la pestaña Repositorio_indice la lista de documentos del
 // repositorio (se actualiza una vez al día); aquí se busca en esa lista, sin esperar a Drive.
-const REPO_FOLDER_URL='https://drive.google.com/drive/folders/1mmgAD6Qx-FnXC97IVSB6D9kOkMikt43j';
+const REPO_FOLDER_URL='https://drive.google.com/drive/folders/16WkkpsQcDCGFxNqmV8bH_7JFKzJRG_Nf';
 const REPO_INDEX_CSV_URL='https://docs.google.com/spreadsheets/d/1xUZ1Q7XDGQCw406Woy1imLppYszBJ9cEjk0__fmP3wU/gviz/tq?tqx=out:csv&headers=1&sheet=Repositorio_indice';
 async function loadRepoIndex(){
  const r=await sheetFetch(REPO_INDEX_CSV_URL+'&_='+Date.now(),20000);if(!r.ok)throw new Error('repositorio');
  const rows=csvRows(await r.text());if(!rows.length)return null;
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
  if(ix('Título')<0||ix('Enlace')<0)return null; // la pestaña aún no existe
- return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map(r=>({titulo:String(r[ix('Título')]||'').trim(),enlace:String(r[ix('Enlace')]||'').trim(),carpeta:ix('Carpeta')>=0?String(r[ix('Carpeta')]||'').trim():'',fecha:ix('Modificado')>=0?String(r[ix('Modificado')]||'').trim():'',tipo:ix('Tipo')>=0?String(r[ix('Tipo')]||'').trim():''}));
+ return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map(r=>({titulo:String(r[ix('Título')]||'').trim(),enlace:String(r[ix('Enlace')]||'').trim(),carpeta:ix('Carpeta')>=0?String(r[ix('Carpeta')]||'').trim():'',fecha:ix('Modificado')>=0?String(r[ix('Modificado')]||'').trim():'',tipo:ix('Tipo')>=0?String(r[ix('Tipo')]||'').trim():'',creado:ix('Creado')>=0?String(r[ix('Creado')]||'').trim():''}));
 }
 function ensureRepoLoaded(){
  if(repoLoaded||repoLoading)return;
@@ -1111,9 +1111,13 @@ function panelGeneral(){
  const baseAccess=(accessItems.length?accessItems:fallback).filter(a=>!/banco de im[aá]genes/i.test(String(a.title||''))&&!/(últim[oa]?\s+)?(guion|reuni[oó]n).*grupo|grupo\s*\/\s*no\s*grupo/i.test(String(a.title||'')));
  const accesos=[...baseAccess,{title:'Banco de imágenes',desc:'Archivo compartido de imágenes del grupo.',url:'https://hodei.legebiltzarra.eus/index.php/s/hFnkUZhwILvJVA9'}].map(a=>{const t=String(a.title||'');return {...a,icon:/banco de im[aá]genes/i.test(t)?'▧':/banco de datos/i.test(t)?'▦':/guion|reuni[oó]n/i.test(t)?'☰':'▣',go:/banco de datos/i.test(t)?'Banco de Datos':''}});
  const html=accesos.map(a=>a.go?`<button type="button" class="hubcard" data-go="${a.go}"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></button>`:(a.url?`<a class="hubcard" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></a>`:`<div class="hubcard"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div></div>`)).join('');
- const docs=(newDocsItems||[]).slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,5);
+ // Últimos documentos subidos al repositorio (el índice ya viene ordenado del más nuevo al más antiguo).
+ // Si el índice aún no existe, se usan los "nuevos documentos" de siempre.
+ ensureRepoLoaded();
+ const fromRepo=repoItems.length&&repoItems[0].creado!==undefined&&repoItems.some(x=>x.creado);
+ const docs=fromRepo?repoItems.slice(0,5).map(d=>({titulo:d.titulo,descripcion:d.carpeta,fecha:d.creado,enlace:d.enlace})):(newDocsItems||[]).slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,5);
  const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item"><b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">Abrir documento →</a>`:''}</div>`).join(''):`<div class="newdoc-empty">No hay documentos nuevos disponibles.</div>`;
- const docsDropdown=`<details class="newdocs"><summary>NUEVOS DOCUMENTOS DISPONIBLES <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
+ const docsDropdown=`<details class="newdocs"><summary>${fromRepo?'ÚLTIMOS DOCUMENTOS DEL REPOSITORIO':'NUEVOS DOCUMENTOS DISPONIBLES'} <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
  const santiFolder=normPerson(currentPersonName())==='santi lopez'?`<a class="hubcard" href="https://drive.google.com/drive/folders/10mjx-n2F5KmkZOM26QmeLxxyZ10c4ciF" target="_blank" rel="noopener noreferrer"><div class="hubicon">📁</div><div class="hubtext"><b>Mi carpeta · Santi</b><span>Abrir directamente tu carpeta del Drive compartido GPV.</span></div><div class="hubarrow">›</div></a>`:'';
  return `<div class="pageintro"><h2>Panel general</h2><p>Herramientas y recursos comunes del Grupo Popular Vasco</p></div>${repoSearchBlock()}${docsDropdown}${santiFolder?`<div class="hubgrid" style="margin-bottom:10px">${santiFolder}</div>`:''}<div class="hubgrid">${html}</div>`
 }
