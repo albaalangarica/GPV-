@@ -1,4 +1,7 @@
-const CACHE_NAME = 'gpv-v4-layout-private-tasks';
+// Solo se guardan en el dispositivo los archivos de la propia app.
+// Las peticiones a Google (hojas, Apps Script) no pasan por aquí: antes se copiaban
+// todas y el almacenamiento del móvil crecía sin límite.
+const CACHE_NAME = 'gpv-v5-app-shell';
 
 const APP_FILES = [
   './',
@@ -17,6 +20,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
+  // Borra las cachés antiguas, incluidas las llenas de CSV de versiones anteriores.
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
@@ -31,27 +35,43 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
+  const request = event.request;
+  if (request.method !== 'GET') return;
 
-  event.respondWith(
-    fetch(
-      event.request.mode === 'navigate'
-        ? new Request(event.request, { cache: 'reload' })
-        : event.request
-    )
-      .then(response => {
-        const copy = response.clone();
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
 
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, copy);
-        });
-
-        return response;
-      })
-      .catch(() =>
-        caches.match(event.request).then(cached => {
-          return cached || caches.match('./index.html');
+  // La página: siempre la versión más reciente; si no hay red, la guardada.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(new Request(request, { cache: 'reload' }))
+        .then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+          }
+          return response;
         })
-      )
+        .catch(() =>
+          caches.match(request).then(cached => cached || caches.match('./index.html'))
+        )
+    );
+    return;
+  }
+
+  // Iconos y manifest: se sirven al instante desde el dispositivo y se renuevan por detrás.
+  event.respondWith(
+    caches.match(request).then(cached => {
+      const network = fetch(request)
+        .then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => cached);
+      return cached || network;
+    })
   );
 });
