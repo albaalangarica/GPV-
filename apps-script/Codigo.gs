@@ -439,6 +439,81 @@ function cancelarEvento(data) {
   return jsonResponse({ ok: true, id: id });
 }
 
+/* ============ ÍNDICE DEL REPOSITORIO (buscador del Panel general) ============ */
+
+// Carpeta raíz del Repositorio GPV en Drive. La app busca por título en la pestaña
+// Repositorio_indice, que se rellena recorriendo esta carpeta y todas sus subcarpetas.
+const REPOSITORIO_FOLDER_ID = '1mmgAD6Qx-FnXC97IVSB6D9kOkMikt43j';
+const SHEET_REPOSITORIO = 'Repositorio_indice';
+
+// Ejecutar UNA VEZ a mano desde el editor: pide permiso de Drive, crea el índice
+// y programa su actualización automática una vez al día (hacia las 6:00).
+function instalarIndiceRepositorio() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'actualizarIndiceRepositorio')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('actualizarIndiceRepositorio').timeBased().everyDays(1).atHour(6).create();
+  actualizarIndiceRepositorio();
+}
+
+function actualizarIndiceRepositorio() {
+  const inicio = Date.now();
+  const limiteMs = 5 * 60 * 1000; // Apps Script corta a los 6 minutos
+  const tz = Session.getScriptTimeZone();
+  const filas = [];
+  const pendientes = [{ folder: DriveApp.getFolderById(REPOSITORIO_FOLDER_ID), ruta: '' }];
+  const vistas = {};
+  let completo = true;
+
+  while (pendientes.length) {
+    if (Date.now() - inicio > limiteMs) { completo = false; break; }
+    const actual = pendientes.shift();
+    const files = actual.folder.getFiles();
+    while (files.hasNext()) {
+      const f = files.next();
+      if (f.isTrashed()) continue;
+      filas.push([
+        f.getName(),
+        f.getUrl(),
+        actual.ruta || 'Repositorio',
+        Utilities.formatDate(f.getLastUpdated(), tz, 'dd/MM/yyyy'),
+        tipoDocumento(f.getMimeType()),
+        f.getLastUpdated().getTime()
+      ]);
+    }
+    const subs = actual.folder.getFolders();
+    while (subs.hasNext()) {
+      const s = subs.next();
+      const id = s.getId();
+      if (vistas[id] || s.isTrashed()) continue; // evita bucles con accesos directos
+      vistas[id] = true;
+      pendientes.push({ folder: s, ruta: (actual.ruta ? actual.ruta + ' / ' : '') + s.getName() });
+    }
+  }
+
+  // Si no ha dado tiempo a recorrerlo todo, no se sustituye un índice completo por uno a medias.
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(SHEET_REPOSITORIO);
+  if (!completo && sheet && sheet.getLastRow() > filas.length + 1) return;
+  if (!sheet) sheet = ss.insertSheet(SHEET_REPOSITORIO);
+
+  filas.sort((a, b) => b[5] - a[5]);
+  const datos = [['Título', 'Enlace', 'Carpeta', 'Modificado', 'Tipo']].concat(filas.map(r => r.slice(0, 5)));
+  sheet.clearContents();
+  sheet.getRange(1, 1, datos.length, 5).setNumberFormat('@').setValues(datos);
+  sheet.setFrozenRows(1);
+}
+
+function tipoDocumento(mime) {
+  const m = String(mime || '');
+  if (m.indexOf('document') >= 0 || m.indexOf('word') >= 0) return 'Documento';
+  if (m.indexOf('spreadsheet') >= 0 || m.indexOf('excel') >= 0) return 'Hoja de cálculo';
+  if (m.indexOf('presentation') >= 0 || m.indexOf('powerpoint') >= 0) return 'Presentación';
+  if (m.indexOf('pdf') >= 0) return 'PDF';
+  if (m.indexOf('image') >= 0) return 'Imagen';
+  return 'Archivo';
+}
+
 /* ============ doGet / helpers de respuesta ============ */
 
 function doGet(e) {
