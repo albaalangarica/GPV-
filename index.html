@@ -27,7 +27,12 @@ body{font-size:13px}.app{max-width:760px}header{padding:17px 20px 20px}.eyebrow{
 /* Confirmaciones y edición de tareas */
 .task{grid-template-columns:30px minmax(0,1fr) auto}.task-side{display:flex;align-items:center;gap:7px}.task[data-task-longpress]{-webkit-user-select:none;user-select:none;touch-action:pan-y}.task[data-task-longpress].pressing{background:#f0f3f8}.task-actions{display:none}
 .sheet label{display:block;font-size:11px;font-weight:800;color:#526078;margin:10px 0 2px;letter-spacing:.03em}.sheet .danger{margin-left:auto;color:#a84432;background:#fff;border-color:#e7c2ba}
-.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:50;max-width:calc(100vw - 28px);background:#17233b;color:#fff;border-radius:9px;padding:10px 12px;box-shadow:0 8px 24px #0003;display:flex;align-items:center;gap:12px;font-size:12px;font-weight:700;animation:toastin .16s ease-out}.toast button{border:0;background:transparent;color:#ffd36b;font:inherit;font-size:12px;font-weight:800;padding:2px 0}.toast.success:before{content:'✓';display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#ffffff24}.toast.hidden{display:none}@keyframes toastin{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:50;max-width:calc(100vw - 28px);background:#17233b;color:#fff;border-radius:9px;padding:10px 12px;box-shadow:0 8px 24px #0003;display:flex;align-items:center;gap:12px;font-size:12px;font-weight:700;animation:toastin .16s ease-out}.toast button{border:0;background:transparent;color:#ffd36b;font:inherit;font-size:12px;font-weight:800;padding:2px 0}.toast.success:before{content:'✓';display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#ffffff24}.toast.hidden{display:none}
+.toast.warn:before{content:'!';display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#ffd36b;color:#17233b}
+.toast.info:before{content:'…';display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#ffffff24}
+.sync-banner{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 2px 12px;padding:9px 12px;border-radius:9px;background:#fff6e0;border:1px solid #f1d58f;color:#5b4300;font-size:12px;line-height:1.35}
+.sync-banner.loading{background:#eef3fb;border-color:#cfdcf0;color:#24458a}
+.sync-banner button{border:0;background:transparent;color:#24458a;font:inherit;font-weight:800;padding:0;text-decoration:underline;cursor:pointer}@keyframes toastin{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 .app-notification{position:fixed;z-index:70;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(720px,calc(100vw - 24px));display:grid;grid-template-columns:44px minmax(0,1fr) 24px;gap:11px;align-items:center;padding:13px 14px;border:1px solid rgba(255,255,255,.75);border-radius:20px;background:rgba(220,231,250,.96);color:#17233b;box-shadow:0 12px 34px rgba(23,35,59,.24);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);animation:notifyin .24s ease-out;cursor:pointer}.app-notification-icon{width:44px;height:44px;border-radius:12px;background:#173f86;color:#fff;display:grid;place-items:center;font-size:23px}.app-notification-copy{min-width:0}.app-notification-copy b{display:block;font-size:14px;line-height:1.2;margin-bottom:3px}.app-notification-copy span{display:block;font-size:12px;line-height:1.3}.app-notification-close{align-self:start;border:0;background:transparent;color:#657185;font-size:18px;line-height:1;padding:2px;cursor:pointer}@keyframes notifyin{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}@media(max-width:520px){.app-notification{grid-template-columns:40px minmax(0,1fr) 22px;padding:11px 12px;border-radius:18px}.app-notification-icon{width:40px;height:40px;font-size:21px}.app-notification-copy b{font-size:13px}.app-notification-copy span{font-size:11px}}
 @media(max-width:420px){.task-side{gap:5px}.badge{display:inline-block;font-size:9px}}
 
@@ -201,10 +206,10 @@ const BUZON_PASSWORD='1234';
 const TASKS_API_URL='https://script.google.com/macros/s/AKfycbyrWHyc-PwWrccvjufnv7MLnrUom6tTvcJXDtiDXt1Ee9a698ju5vkJi2K0Sy4AUFNs/exec';
 let tasks=[],tasksLoadedFor='';
 let remoteDismissed=new Set(),remoteStateLoadedFor='',remoteRefreshBusy=false;
-let buzonUnlocked=false;
+let buzonUnlocked=false,bdSearchTimer=null;
 
 
-function showToast(message,undoFn=null){let t=document.getElementById('gpvToast');if(!t){t=document.createElement('div');t.id='gpvToast';document.body.appendChild(t)}if(toastTimer)clearTimeout(toastTimer);pendingUndo=undoFn;t.className='toast success';t.innerHTML=`<span>${esc(message)}</span>${undoFn?'<button id="toastUndo">Deshacer</button>':''}`;if(undoFn){document.getElementById('toastUndo').onclick=()=>{const fn=pendingUndo;pendingUndo=null;t.remove();if(fn)fn()}}toastTimer=setTimeout(()=>{pendingUndo=null;t.remove()},2800)}
+function showToast(message,undoFn=null,kind='success'){let t=document.getElementById('gpvToast');if(!t){t=document.createElement('div');t.id='gpvToast';document.body.appendChild(t)}if(toastTimer)clearTimeout(toastTimer);pendingUndo=undoFn;t.className='toast '+kind;t.innerHTML=`<span>${esc(message)}</span>${undoFn?'<button id="toastUndo">Deshacer</button>':''}`;if(undoFn){document.getElementById('toastUndo').onclick=()=>{const fn=pendingUndo;pendingUndo=null;t.remove();if(fn)fn()}}toastTimer=setTimeout(()=>{pendingUndo=null;t.remove()},2800)}
 function notificationUserKey(){return normPerson(currentPersonName()).replace(/\s+/g,'-')||'usuario'}
 function readNotificationIds(key){try{const value=JSON.parse(localStorage.getItem(key)||'null');return Array.isArray(value)?value:null}catch(e){return null}}
 function responseNotificationKey(x){return [x.expediente||x.titulo||'',x.fechaRespuesta||'',x.respuestaEnlace||'',x.situacion||''].map(normPerson).join('|')}
@@ -285,6 +290,85 @@ async function taskApi(payload){
   return true;
  }catch(e){console.error('Error guardando tarea',e);return false}
 }
+// ---- Cola de cambios pendientes ----
+// Apps Script no deja leer la respuesta del POST (no-cors), así que cada cambio se
+// guarda aquí, se envía y se da por bueno solo cuando al releer el Excel aparece.
+// Si no aparece, se reenvía; si sigue sin aparecer, se avisa en pantalla.
+const OUTBOX_KEY='gpvOutbox:v1',OUTBOX_MAX_TRIES=3,OUTBOX_WAIT_MS=20000;
+let outboxBusy=false,outboxTimer=null;const outboxWaiters=new Map();
+function readOutbox(){try{const v=JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
+function writeOutbox(list){try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(list))}catch(e){}}
+function myOutbox(){const me=currentPersonName();return readOutbox().filter(x=>x.user===me)}
+function outboxTarget(e){return e.kind+':'+e.target}
+function resolveOutboxWaiter(uid,value){const w=outboxWaiters.get(uid);if(w){clearTimeout(w.timer);outboxWaiters.delete(uid);w.resolve(value)}}
+function queueWrite(kind,op,target,payload,local,createPayload=null){
+ const entry={uid:'w'+Date.now()+Math.random().toString(36).slice(2,7),kind,op,target:String(target),payload,local:local||null,createPayload,user:currentPersonName(),tries:1,sentAt:Date.now(),failed:false};
+ const all=readOutbox(),prev=all.filter(x=>x.user===entry.user&&outboxTarget(x)===outboxTarget(entry));
+ // Un cambio nuevo sobre el mismo elemento sustituye al pendiente. Si el anterior era
+ // una creación aún sin confirmar, se conserva para poder reenviarla con los datos nuevos.
+ const pendingCreate=prev.find(x=>x.op==='create'||x.createPayload);
+ if(pendingCreate&&op==='update')entry.createPayload=createPayload||pendingCreate.createPayload||pendingCreate.payload;
+ for(const p of prev)resolveOutboxWaiter(p.uid,true);
+ writeOutbox([...all.filter(x=>!prev.includes(x)),entry]);
+ taskApi(payload);
+ updateSyncBanner();scheduleOutboxCheck(2500);
+ return new Promise(resolve=>{const timer=setTimeout(()=>{outboxWaiters.delete(entry.uid);resolve(false)},OUTBOX_WAIT_MS);outboxWaiters.set(entry.uid,{resolve,timer})});
+}
+function scheduleOutboxCheck(ms=6000){clearTimeout(outboxTimer);outboxTimer=setTimeout(verifyOutbox,ms)}
+function outboxEntryConfirmed(e,fresh){
+ if(e.kind==='task'){const list=fresh.tasks;if(!Array.isArray(list))return null;const found=list.find(t=>String(t.id)===e.target);if(e.op==='delete')return !found;if(!found)return false;const l=e.local||{};return (found.title===undefined||l.title===undefined||String(found.title)===String(l.title))&&(found.done===undefined||l.done===undefined||!!found.done===!!l.done)}
+ if(e.kind==='event'){const list=fresh.agenda;if(!Array.isArray(list))return null;const found=list.find(x=>String(x.id_evento)===e.target);if(e.op==='delete')return !found;if(!found)return false;const l=e.local||{};return (!l.event_date||found.event_date===l.event_date)&&(!l.organ_activity||String(found.organ_activity).trim()===String(l.organ_activity).trim())}
+ if(e.kind==='dismissal'){const set=fresh.dismissals;if(!set)return null;return e.op==='add'?set.has(e.target):!set.has(e.target)}
+ return null;
+}
+async function verifyOutbox(){
+ if(outboxBusy||!session?.user)return;
+ const pending=myOutbox().filter(x=>!x.failed);if(!pending.length){updateSyncBanner();return}
+ outboxBusy=true;const who=session;
+ try{
+  const kinds=new Set(pending.map(x=>x.kind)),fresh={};
+  await Promise.all([
+   kinds.has('task')?loadRemoteTasks().then(v=>{fresh.tasks=v}).catch(()=>{}):null,
+   kinds.has('dismissal')?loadRemoteDismissals().then(v=>{if(Array.isArray(v))fresh.dismissals=new Set(v.filter(x=>x&&x.tipo&&x.item_id).map(x=>String(x.tipo).toLowerCase()+':'+String(x.item_id)))}).catch(()=>{}):null,
+   kinds.has('event')?loadAgendaFromSheet().then(v=>{fresh.agenda=v}).catch(()=>{}):null
+  ]);
+  if(session!==who)return;
+  const now=Date.now();let list=readOutbox();
+  for(const e of pending){
+   const ok=outboxEntryConfirmed(e,fresh);
+   if(ok===true){list=list.filter(x=>x.uid!==e.uid);resolveOutboxWaiter(e.uid,true);continue}
+   if(ok===null)continue; // no se pudo leer el Excel: se vuelve a comprobar más tarde
+   const wait=(e.op==='create'||e.createPayload)?30000:12000;
+   if(now-e.sentAt<wait)continue;
+   const cur=list.find(x=>x.uid===e.uid);if(!cur)continue;
+   if(cur.tries>=OUTBOX_MAX_TRIES){cur.failed=true;resolveOutboxWaiter(e.uid,false);continue}
+   const found=e.kind==='task'?(fresh.tasks||[]).some(t=>String(t.id)===e.target):e.kind==='event'?(fresh.agenda||[]).some(x=>String(x.id_evento)===e.target):true;
+   taskApi(e.op==='update'&&e.createPayload&&!found?{...e.createPayload,...pickCreateFields(e)}:e.payload);
+   cur.tries++;cur.sentAt=now;
+  }
+  writeOutbox(list);
+  if(Array.isArray(fresh.tasks)||fresh.dismissals)applyRemoteUserState(Array.isArray(fresh.tasks)?fresh.tasks:null,fresh.dismissals?[...fresh.dismissals].map(k=>{const i=k.indexOf(':');return {tipo:k.slice(0,i),item_id:k.slice(i+1)}}):null);
+  if(Array.isArray(fresh.agenda)&&fresh.agenda.length)setSourceData('agenda',fresh.agenda);
+  scheduleRender();
+ }finally{outboxBusy=false;updateSyncBanner()}
+ if(myOutbox().some(x=>!x.failed))scheduleOutboxCheck(6000);
+}
+// Al reenviar una creación con datos editados después, se usan los datos más recientes.
+function pickCreateFields(e){const p={...e.payload};delete p.action;return p}
+function retryFailedWrites(){const me=currentPersonName();const list=readOutbox();for(const e of list){if(e.user===me&&e.failed){e.failed=false;e.tries=1;e.sentAt=Date.now();taskApi(e.payload)}}writeOutbox(list);updateSyncBanner();scheduleOutboxCheck(2500)}
+function discardFailedWrites(){const me=currentPersonName();writeOutbox(readOutbox().filter(e=>!(e.user===me&&e.failed)));updateSyncBanner();refreshRemoteUserState();refreshAllData(true)}
+function overlayById(list,kind,idKey){
+ let out=[...(list||[])];
+ for(const e of myOutbox()){
+  if(e.kind!==kind)continue;
+  const i=out.findIndex(x=>String(x[idKey])===e.target);
+  if(e.op==='delete'){if(i>=0)out.splice(i,1);continue}
+  if(!e.local)continue;
+  if(i>=0)out[i]={...out[i],...e.local};else out.push(e.local);
+ }
+ return out;
+}
+function overlayDismissals(set){const out=new Set(set);for(const e of myOutbox()){if(e.kind!=='dismissal')continue;e.op==='add'?out.add(e.target):out.delete(e.target)}return out}
 function apiJsonp(action,extra={}){
  return new Promise((resolve,reject)=>{
   const cb='gpvApi'+Date.now()+Math.random().toString(36).slice(2),script=document.createElement('script');let done=false,timer=null;
@@ -292,7 +376,7 @@ function apiJsonp(action,extra={}){
   window[cb]=data=>finish(null,data);
   const params=new URLSearchParams({action,usuario:currentPersonName(),callback:cb,_:String(Date.now()),...extra});
   script.src=TASKS_API_URL+'?'+params.toString();script.onerror=()=>finish(new Error('No se pudo conectar con el servicio'));
-  document.head.appendChild(script);timer=setTimeout(()=>finish(new Error('Tiempo de espera agotado')),6000);
+  document.head.appendChild(script);timer=setTimeout(()=>finish(new Error('Tiempo de espera agotado')),15000);
  });
 }
 async function loadRemoteTasks(){
@@ -316,28 +400,30 @@ function itemDismissed(type,x){
 function setLocalDismissal(type,x,value){
  const prefix=dismissalLocalPrefix(type);for(const id of dismissalIds(x)){value?localStorage.setItem(prefix+id,'1'):localStorage.removeItem(prefix+id)}
 }
-function dismissalApi(action,type,x){return taskApi({action,usuario:currentPersonName(),tipo:type,item_id:String(x.id)})}
+function dismissalApi(action,type,x){const key=type+':'+String(x.id);return queueWrite('dismissal',action==='descartar_item'?'add':'remove',key,{action,usuario:currentPersonName(),tipo:type,item_id:String(x.id)})}
 async function setDismissal(type,x,value){
  setLocalDismissal(type,x,value);const key=type+':'+x.id;value?remoteDismissed.add(key):remoteDismissed.delete(key);
- return dismissalApi(value?'descartar_item':'restaurar_descarte',type,x);
+ dismissalApi(value?'descartar_item':'restaurar_descarte',type,x);
+ return true;
 }
 function sourceItemById(type,id){
  const list=type==='radar'?radarItems:type==='bopv'?bopvItems:[...(albaCosasItems||[]),...(santiCosasItems||[])];
  return list.find(x=>String(x.id)===String(id));
 }
 function applyRemoteUserState(remoteTasks,remoteDiscards){
- if(Array.isArray(remoteTasks)&&taskUserEnabled()){tasks=remoteTasks;tasksLoadedFor=taskKey();saveTasksLocal()}
- if(Array.isArray(remoteDiscards))remoteDismissed=new Set(remoteDiscards.filter(x=>x&&x.tipo&&x.item_id).map(x=>String(x.tipo).toLowerCase()+':'+String(x.item_id)));
+ if(Array.isArray(remoteTasks)&&taskUserEnabled()){tasks=overlayById(remoteTasks,'task','id');tasksLoadedFor=taskKey();saveTasksLocal()}
+ if(Array.isArray(remoteDiscards))remoteDismissed=overlayDismissals(new Set(remoteDiscards.filter(x=>x&&x.tipo&&x.item_id).map(x=>String(x.tipo).toLowerCase()+':'+String(x.item_id))));
  remoteStateLoadedFor=notificationUserKey();
 }
 async function refreshRemoteUserState(){
  if(remoteRefreshBusy||!session?.user)return;remoteRefreshBusy=true;
- try{const [remoteTasks,remoteDiscards]=await Promise.all([loadRemoteTasks(),loadRemoteDismissals()]);const beforeTasks=JSON.stringify(tasks),beforeDiscards=[...remoteDismissed].sort().join('|');applyRemoteUserState(remoteTasks,remoteDiscards);if(beforeTasks!==JSON.stringify(tasks)||beforeDiscards!==[...remoteDismissed].sort().join('|'))render()}finally{remoteRefreshBusy=false}
+ try{const [remoteTasks,remoteDiscards]=await Promise.all([loadRemoteTasks(),loadRemoteDismissals()]);const beforeTasks=JSON.stringify(tasks),beforeDiscards=[...remoteDismissed].sort().join('|');applyRemoteUserState(remoteTasks,remoteDiscards);if(beforeTasks!==JSON.stringify(tasks)||beforeDiscards!==[...remoteDismissed].sort().join('|'))scheduleRender()}finally{remoteRefreshBusy=false}
 }
 function taskPayload(action,task){return {action,id:String(task.id),parlamentario:currentPersonName(),tarea:task.title,area:task.area||'',prioridad:task.priority||'Pronto',fecha:task.when||'Sin fecha',estado:task.done?'Hecho':'Pendiente'}}
-function persistTask(task){return taskApi(taskPayload('crear_tarea',task))}
-function updateTaskRemote(task){return taskApi(taskPayload('actualizar_tarea',task))}
-function deleteTaskRemote(task){return taskApi({action:'eliminar_tarea',id:String(task.id),parlamentario:currentPersonName()})}
+function persistTask(task){return queueWrite('task','create',task.id,taskPayload('crear_tarea',task),{...task})}
+function updateTaskRemote(task){return queueWrite('task','update',task.id,taskPayload('actualizar_tarea',task),{...task},taskPayload('crear_tarea',task))}
+function deleteTaskRemote(task){if(!task)return Promise.resolve(true);return queueWrite('task','delete',task.id,{action:'eliminar_tarea',id:String(task.id),parlamentario:currentPersonName()})}
+function saveToast(ok,done,pendingMsg='Aún sin confirmar en el Excel: se reintentará solo'){showToast(ok?done:pendingMsg,null,ok?'success':'warn')}
 function priorityClass(p){p=normPerson(p);return p.includes('urgente')?'task-priority-urgente':p.includes('pronto')?'task-priority-pronto':'task-priority-cuando'}
 function sourceTaskKey(title){return normPerson(title).replace(/\s+/g,' ')}
 function sourceTaskArea(title,areaHint='',personHint=''){
@@ -376,19 +462,19 @@ function openTaskModal(id=null,prefill=''){
   const title=document.getElementById('taskText').value.trim();if(!title)return;
   const data={title,priority:document.getElementById('taskPriority').value,area:document.getElementById('taskArea').value,when:'Sin fecha'};
   let item;if(editing){tasks=tasks.map(x=>String(x.id)===String(id)?{...x,...data}:x);item=tasks.find(x=>String(x.id)===String(id))}else{item={id:Date.now(),...data,done:false};tasks.push(item)}
-  saveTasksLocal();document.getElementById('modal').innerHTML='';render();
-  const ok=await (editing?updateTaskRemote(item):persistTask(item));showToast(ok?(editing?'Tarea actualizada':'Tarea guardada en el Excel'):'No se pudo guardar en el Excel');
+  saveTasksLocal();document.getElementById('modal').innerHTML='';render();showToast('Guardando…',null,'info');
+  const ok=await (editing?updateTaskRemote(item):persistTask(item));saveToast(ok,editing?'Tarea actualizada':'Tarea guardada en el Excel');
  };
- const del=document.getElementById('deleteTask');if(del)del.onclick=async()=>{const item=tasks.find(x=>String(x.id)===String(id));tasks=tasks.filter(x=>String(x.id)!==String(id));saveTasksLocal();document.getElementById('modal').innerHTML='';render();const ok=await deleteTaskRemote(item);showToast(ok?'Tarea eliminada':'No se pudo eliminar del Excel')};
+ const del=document.getElementById('deleteTask');if(del)del.onclick=async()=>{const item=tasks.find(x=>String(x.id)===String(id));tasks=tasks.filter(x=>String(x.id)!==String(id));saveTasksLocal();document.getElementById('modal').innerHTML='';render();showToast('Eliminando…',null,'info');const ok=await deleteTaskRemote(item);saveToast(ok,'Tarea eliminada')};
 }
 const EVENTO_DESTINATARIOS=['Alba Langarica','Santi López','Laura Garrido','Javier de Andrés','Ainhoa Domaica','Ana Morales','Álvaro Gotxi','Muriel Larrea'];
 function canManageAgendaEvents(){const n=normPerson(currentPersonName());return n==='santi lopez'||n==='jorge panera'||(isAdmin()&&n==='alba langarica')}
 function generateEventoId(){return 'EVT-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)}
 function eventoDateToSheet(iso){const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:''}
 function eventoPayload(action,ev){return {action,id:String(ev.id_evento||''),fecha:eventoDateToSheet(ev.event_date),hora:ev.event_time||'',tipo:ev.type||'Reunión',titulo:ev.organ_activity||'',lugar:ev.location||'',detalle:ev.detail||'',enlace:ev.expediente_link||'',destinatarios:ev.parlamentario||'',creado_por:currentPersonName()}}
-function persistEvento(ev){return taskApi(eventoPayload('crear_evento',ev))}
-function actualizarEventoRemote(ev){return taskApi(eventoPayload('actualizar_evento',ev))}
-function cancelarEventoRemote(id){return taskApi({action:'cancelar_evento',id:String(id),creado_por:currentPersonName()})}
+function persistEvento(ev){return queueWrite('event','create',ev.id_evento,eventoPayload('crear_evento',ev),{...ev})}
+function actualizarEventoRemote(ev){return queueWrite('event','update',ev.id_evento,eventoPayload('actualizar_evento',ev),{...ev},eventoPayload('crear_evento',ev))}
+function cancelarEventoRemote(id){return queueWrite('event','delete',id,{action:'cancelar_evento',id:String(id),creado_por:currentPersonName()})}
 function eventoDestinatariosChecked(x,n){if(!x)return normPerson(n)===normPerson(currentPersonName());return String(x.parlamentario||'').split(/\s*(?:\/|;|,|\+|\by\b)\s*/i).some(p=>normPerson(p)===normPerson(n))}
 function openEventModal(id=null){
  const editing=id!==null,x=editing?agendaItems.find(e=>String(e.id_evento)===String(id)):null;if(editing&&!x)return;
@@ -418,40 +504,44 @@ function openEventModal(id=null){
   document.getElementById('modal').innerHTML='';
   if(editing){
    const merged={...x,...data};
-   agendaItems=agendaItems.map(e=>String(e.id_evento)===String(id)?merged:e);render();
-   const ok=await actualizarEventoRemote(merged);showToast(ok?'Evento actualizado':'No se pudo actualizar en el Excel');
+   agendaItems=agendaItems.map(e=>String(e.id_evento)===String(id)?merged:e);render();showToast('Guardando…',null,'info');
+   const ok=await actualizarEventoRemote(merged);saveToast(ok,'Evento actualizado');
   }else{
    const tempId=generateEventoId();
    const item={...data,id_evento:tempId,creado_por:currentPersonName(),estado:'Activo'};
-   agendaItems=[...agendaItems,item];render();
-   const ok=await persistEvento(item);showToast(ok?'Evento guardado':'No se pudo guardar en el Excel');
+   agendaItems=[...agendaItems,item];render();showToast('Guardando…',null,'info');
+   const ok=await persistEvento(item);saveToast(ok,'Evento guardado');
   }
-  setTimeout(refreshAgendaFromSheet,4000);
  };
  const del=document.getElementById('deleteEvento');if(del)del.onclick=async()=>{
   agendaItems=agendaItems.filter(e=>String(e.id_evento)!==String(id));document.getElementById('modal').innerHTML='';render();
-  const ok=await cancelarEventoRemote(id);showToast(ok?'Evento cancelado':'No se pudo cancelar en el Excel');
-  setTimeout(refreshAgendaFromSheet,4000);
+  showToast('Cancelando…',null,'info');const ok=await cancelarEventoRemote(id);saveToast(ok,'Evento cancelado');
  };
+}
+function sheetFetch(url,timeoutMs=12000){
+ const ctrl=typeof AbortController!=='undefined'?new AbortController():null;const timer=ctrl?setTimeout(()=>ctrl.abort(),timeoutMs):null;
+ return fetch(url,{cache:'no-store',signal:ctrl?.signal}).finally(()=>{if(timer)clearTimeout(timer)});
 }
 function csvRows(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i];if(quoted){if(ch==='\"'&&text[i+1]==='\"'){cell+='\"';i++}else if(ch==='\"')quoted=false;else cell+=ch}else{if(ch==='\"')quoted=true;else if(ch===','){row.push(cell);cell=''}else if(ch==='\n'){row.push(cell);rows.push(row);row=[];cell=''}else if(ch!=='\r')cell+=ch}}row.push(cell);if(row.some(v=>v!==''))rows.push(row);return rows}
 function sheetDateToISO(v){const s=String(v||'').trim();let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;m=s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})\)$/);if(m)return `${m[1]}-${String(Number(m[2])+1).padStart(2,'0')}-${m[3].padStart(2,'0')}`;return s}
 function mapAgendaRows(rows){if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const firstIx=(...names)=>{for(const n of names){const i=ix(n);if(i>=0)return i}return-1};const val=(r,...names)=>{const i=firstIx(...names);return i>=0?(r[i]||''):''};return rows.slice(1).filter(r=>r.some(v=>String(v||'').trim())).map(r=>({event_date:sheetDateToISO(val(r,'Fecha')),day_name:val(r,'Día','Dia'),event_time:val(r,'Hora'),type:val(r,'Tipo'),organ_activity:val(r,'Órgano / actividad','Organo / actividad','Órgano','Organo'),location:val(r,'Lugar'),detail:val(r,'Asunto / detalle','Asunto','Detalle'),expediente:val(r,'Expediente relacionado','Expediente'),agenda_link:val(r,'Agenda / orden del día','Agenda / orden del dia','Orden del día','Orden del dia'),expediente_link:val(r,'Ficha expediente','Enlace expediente'),parlamentario:val(r,'Parlamentario','Responsable','Asignado a'),area_label:val(r,'Etiqueta / área','Etiqueta / area','Área','Area'),id_evento:val(r,'ID_evento'),creado_por:val(r,'Creado_por'),estado:val(r,'Estado')})).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.event_date)&&normPerson(x.estado||'activo')!=='cancelado')}
-function loadAgendaGViz(){return new Promise((resolve,reject)=>{const cb='gpvAgenda'+Date.now();const script=document.createElement('script');let done=false;const finish=(err,data)=>{if(done)return;done=true;delete window[cb];script.remove();err?reject(err):resolve(data)};window[cb]=res=>{try{const cols=(res.table?.cols||[]).map(c=>c.label||'');const rows=[cols,...(res.table?.rows||[]).map(r=>(r.c||[]).map(c=>c?(c.f??c.v??'') : ''))];finish(null,mapAgendaRows(rows))}catch(e){finish(e)}};script.src=AGENDA_GVIZ_URL+'&tqx=responseHandler:'+cb+'&_='+Date.now();script.onerror=()=>finish(new Error('No se pudo cargar la Agenda'));document.head.appendChild(script);setTimeout(()=>finish(new Error('Tiempo de espera agotado')),8000)})}
+function loadAgendaGViz(){return new Promise((resolve,reject)=>{const cb='gpvAgenda'+Date.now();const script=document.createElement('script');let done=false;const finish=(err,data)=>{if(done)return;done=true;delete window[cb];script.remove();err?reject(err):resolve(data)};window[cb]=res=>{try{const cols=(res.table?.cols||[]).map(c=>c.label||'');const rows=[cols,...(res.table?.rows||[]).map(r=>(r.c||[]).map(c=>c?(c.f??c.v??'') : ''))];finish(null,mapAgendaRows(rows))}catch(e){finish(e)}};script.src=AGENDA_GVIZ_URL+'&tqx=responseHandler:'+cb+'&_='+Date.now();script.onerror=()=>finish(new Error('No se pudo cargar la Agenda'));document.head.appendChild(script);setTimeout(()=>finish(new Error('Tiempo de espera agotado')),12000)})}
 const GROUP_ZOOM_URL='https://us02web.zoom.us/j/82745673204?pwd=Rpd4JECHxm0Geb2w63W2pFwC66Z8Ii.1';
 const PROVISIONAL_GROUP_START='2026-09-23';
 function isGroupAgendaItem(x){const explicit=explicitAgendaCategory(x);if(explicit)return explicit==='Grupo';const o=normPerson(x.organ_activity||''),d=normPerson(x.detail||'');return o.includes('reunion de grupo')||d.includes('reunion de grupo')||o.includes('grupo popular')||d.includes('grupo popular')}
 function weekMondayISO(iso){const d=new Date(iso+'T12:00:00');const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10)}
 function withProvisionalGroupMeetings(base){const items=[...base];const realWeeks=new Set(items.filter(isGroupAgendaItem).map(x=>weekMondayISO(x.event_date)));const start=new Date(PROVISIONAL_GROUP_START+'T12:00:00');const horizon=new Date();horizon.setHours(12,0,0,0);horizon.setDate(horizon.getDate()+365);for(let d=new Date(start);d<=horizon;d.setDate(d.getDate()+7)){const iso=d.toISOString().slice(0,10);if(realWeeks.has(weekMondayISO(iso)))continue;items.push({event_date:iso,day_name:'Miércoles',event_time:'Hora por confirmar',type:'Reunión',organ_activity:'Reunión de grupo (provisional)',location:'Zoom / por confirmar',detail:'Fecha provisional · reunión semanal de grupo',agenda_link:'',expediente:'',expediente_link:'',parlamentario:'',area_label:'',group_zoom:GROUP_ZOOM_URL,provisional:true})}return items}
-async function loadAgendaFromSheet(){try{const sep=AGENDA_CSV_URL.includes('?')?'&':'?';const r=await fetch(AGENDA_CSV_URL+sep+'_='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('CSV '+r.status);const data=mapAgendaRows(csvRows(await r.text()));if(data.length)return withProvisionalGroupMeetings(data)}catch(e){}return withProvisionalGroupMeetings(await loadAgendaGViz())}
-async function loadPlazos(){try{const r=await fetch(PLAZOS_CSV_URL+'&_='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('plazos');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const full=n=>{const v=normPerson(n);if(v==='santi'||v==='santiago')return 'Santi López';if(v==='ainhoa')return 'Ainhoa Domaica';if(v==='ana')return 'Ana Morales';if(v==='alvaro')return 'Álvaro Gotxi';if(v==='muriel')return 'Muriel Larrea';if(v==='laura')return 'Laura Garrido';if(v==='javier')return 'Javier de Andrés';return String(n||'').trim()};return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()&&normPerson(r[ix('Estado')]||'Pendiente')!=='resuelto').flatMap(r=>{const fecha=sheetDateToISO(r[ix('Plazo enmiendas')]);if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))return[];return String(r[ix('Responsable')]||'').split('/').map(x=>full(x.trim())).filter(Boolean).map(who=>({event_date:fecha,event_time:'Todo el día',type:'Vencimiento',organ_activity:'Plazo de enmiendas',location:'Parlamento Vasco',detail:who+': '+String(r[ix('Iniciativa')]||'').trim()}))})}catch(e){return[]}}
-let agendaRefreshBusy=false;async function refreshAgendaFromSheet(){if(agendaRefreshBusy||!session?.user)return;agendaRefreshBusy=true;try{const fresh=await loadAgendaFromSheet();if(fresh.length){const before=JSON.stringify(agendaItems);const after=JSON.stringify(fresh);if(before!==after){agendaItems=fresh;render()}}}catch(e){}finally{agendaRefreshBusy=false}}
-let notificationRefreshBusy=false;async function refreshUserNotificationData(){if(notificationRefreshBusy||!session?.user||!responseNotificationsEnabled())return;notificationRefreshBusy=true;try{const n=normPerson(currentPersonName()),isAlbaUser=n==='alba langarica',isSantiUser=n==='santi lopez';const inboxLoad=isAlbaUser?safeLoad(loadAlbaCosas,albaCosasItems):isSantiUser?safeLoad(loadSantiCosas,santiCosasItems):Promise.resolve([]);const [freshInitiatives,freshInbox]=await Promise.all([safeLoad(loadInitiatives,initiativeItems),inboxLoad]);if(freshInitiatives.length)initiativeItems=freshInitiatives;if(Array.isArray(freshInbox)){if(isAlbaUser)albaCosasItems=freshInbox;else if(isSantiUser)santiCosasItems=freshInbox}startupNotificationsChecked=false;checkStartupNotifications()}catch(e){}finally{notificationRefreshBusy=false}}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){refreshAgendaFromSheet();refreshUserNotificationData();refreshRemoteUserState()}});window.addEventListener('focus',()=>{refreshAgendaFromSheet();refreshUserNotificationData();refreshRemoteUserState()});
+async function loadAgendaFromSheet(){try{const sep=AGENDA_CSV_URL.includes('?')?'&':'?';const r=await sheetFetch(AGENDA_CSV_URL+sep+'_='+Date.now());if(!r.ok)throw new Error('CSV '+r.status);const data=mapAgendaRows(csvRows(await r.text()));if(data.length)return withProvisionalGroupMeetings(data)}catch(e){}return withProvisionalGroupMeetings(await loadAgendaGViz())}
+async function loadPlazos(){try{const r=await sheetFetch(PLAZOS_CSV_URL+'&_='+Date.now());if(!r.ok)throw new Error('plazos');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const full=n=>{const v=normPerson(n);if(v==='santi'||v==='santiago')return 'Santi López';if(v==='ainhoa')return 'Ainhoa Domaica';if(v==='ana')return 'Ana Morales';if(v==='alvaro')return 'Álvaro Gotxi';if(v==='muriel')return 'Muriel Larrea';if(v==='laura')return 'Laura Garrido';if(v==='javier')return 'Javier de Andrés';return String(n||'').trim()};return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()&&normPerson(r[ix('Estado')]||'Pendiente')!=='resuelto').flatMap(r=>{const fecha=sheetDateToISO(r[ix('Plazo enmiendas')]);if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))return[];return String(r[ix('Responsable')]||'').split('/').map(x=>full(x.trim())).filter(Boolean).map(who=>({event_date:fecha,event_time:'Todo el día',type:'Vencimiento',organ_activity:'Plazo de enmiendas',location:'Parlamento Vasco',detail:who+': '+String(r[ix('Iniciativa')]||'').trim()}))})}catch(e){throw e}}
+function refreshAgendaFromSheet(){return refreshAllData(true,['agenda'])}
+// Al volver a la app se actualiza todo una sola vez (visibilitychange y focus llegan juntos en el móvil).
+let lastResume=0;
+function onAppResume(){if(!session?.user)return;const now=Date.now();if(now-lastResume<60000)return;lastResume=now;refreshAllData(true);refreshRemoteUserState();verifyOutbox()}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')onAppResume()});window.addEventListener('focus',onAppResume);
 
 
 function initiativeType(expediente){const e=String(expediente||'').replaceAll('/','\\');if(e.includes('\\10\\07\\02\\'))return 'Solicitud de información';if(e.includes('\\10\\05\\03\\'))return 'Pregunta escrita';if(e.includes('\\10\\05\\01\\'))return 'Pregunta oral';return 'Iniciativa'}
-async function loadInitiatives(){try{const r=await fetch(INICIATIVAS_CSV_URL,{cache:'no-store'});if(!r.ok)throw new Error('sheet');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const firstIx=(...names)=>{for(const n of names){const i=ix(n);if(i>=0)return i}return-1};
+async function loadInitiatives(){try{const r=await sheetFetch(INICIATIVAS_CSV_URL);if(!r.ok)throw new Error('sheet');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const firstIx=(...names)=>{for(const n of names){const i=ix(n);if(i>=0)return i}return-1};
  const links={'13\\10\\07\\02\\03457':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:90936,N','13\\10\\07\\02\\03684':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:91293,N','13\\10\\07\\02\\03710':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:91330,N'};
  const responseLinks={
   '13\\10\\07\\02\\03413':'https://mail.google.com/mail/#all/1a06736f164735ce',
@@ -463,14 +553,14 @@ async function loadInitiatives(){try{const r=await fetch(INICIATIVAS_CSV_URL,{ca
  };
  const plazos={'13\\10\\07\\02\\03457':'09/09/2026'};const enlIx=firstIx('URL iniciativa','Enlace'),respIx=firstIx('URL respuesta','Enlace respuesta','Respuesta'),fechaRespIx=firstIx('Fecha respuesta','Fecha de respuesta');
  const asUrl=v=>/^https?:\/\//i.test(String(v||'').trim())?String(v).trim():'';
- return rows.slice(1).filter(r=>String(r[ix('Expediente')]||'').trim()).map(r=>{const expediente=r[ix('Expediente')]||'';return {parlamentario:r[ix('Parlamentario')]||'',expediente,titulo:r[ix('Título')]||'',situacion:r[ix('Situación')]||'',enlace:asUrl(enlIx>=0?r[enlIx]:'')||links[expediente]||'',plazo:plazos[expediente]||'',tipo:initiativeType(expediente),respuestaEnlace:asUrl(respIx>=0?r[respIx]:'')||responseLinks[expediente]||'',fechaRespuesta:fechaRespIx>=0?r[fechaRespIx]||'':''}});}catch(e){return[]}}
+ return rows.slice(1).filter(r=>String(r[ix('Expediente')]||'').trim()).map(r=>{const expediente=r[ix('Expediente')]||'';return {parlamentario:r[ix('Parlamentario')]||'',expediente,titulo:r[ix('Título')]||'',situacion:r[ix('Situación')]||'',enlace:asUrl(enlIx>=0?r[enlIx]:'')||links[expediente]||'',plazo:plazos[expediente]||'',tipo:initiativeType(expediente),respuestaEnlace:asUrl(respIx>=0?r[respIx]:'')||responseLinks[expediente]||'',fechaRespuesta:fechaRespIx>=0?r[fechaRespIx]||'':''}});}catch(e){throw e}}
 function mapAssignedRows(rows){if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()).map(r=>({parlamentario:String(r[ix('Parlamentario')]||'').trim(),tipo:String(r[ix('Tipo')]||'').trim(),titulo:String(r[ix('Iniciativa')]||'').trim(),autor:String(r[ix('Autor')]||'').trim(),vencimiento:String(r[ix('Vencimiento')]||'').trim()}))}
-function loadAssignedGViz(){return new Promise((resolve,reject)=>{const cb='gpvAssigned'+Date.now();const script=document.createElement('script');let done=false;const finish=(err,data)=>{if(done)return;done=true;delete window[cb];script.remove();err?reject(err):resolve(data)};window[cb]=res=>{try{const cols=(res.table?.cols||[]).map(c=>c.label||'');const rows=[cols,...(res.table?.rows||[]).map(r=>(r.c||[]).map(c=>c?(c.f??c.v??'') : ''))];finish(null,mapAssignedRows(rows))}catch(e){finish(e)}};script.src=ASIGNADAS_GVIZ_URL+'&tqx=responseHandler:'+cb;script.onerror=()=>finish(new Error('No se pudieron cargar las asignadas'));document.head.appendChild(script);setTimeout(()=>finish(new Error('Tiempo de espera agotado')),8000)})}
-async function loadAssigned(){try{const r=await fetch(ASIGNADAS_CSV_URL,{cache:'no-store'});if(!r.ok)throw new Error('asignadas');const data=mapAssignedRows(csvRows(await r.text()));if(data.length)return data}catch(e){}try{return await loadAssignedGViz()}catch(e){return[]}}
-async function loadAccesses(){try{const r=await fetch(ACCESOS_CSV_URL,{cache:'no-store'});if(!r.ok)throw new Error('accesos');const rows=csvRows(await r.text());const hi=rows.findIndex(r=>String(r[0]||'').trim()==='Recurso');if(hi<0)return[];const h=rows[hi].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(hi+1).filter(r=>String(r[ix('Recurso')]||'').trim()).map((r,i)=>({id:'acc-'+i,title:String(r[ix('Recurso')]||'').trim(),desc:String(r[ix('Descripción')]||'').trim(),url:String(r[ix('URL web')]||'').trim()})).filter(x=>x.title);}catch(e){return[]}}
+function loadAssignedGViz(){return new Promise((resolve,reject)=>{const cb='gpvAssigned'+Date.now();const script=document.createElement('script');let done=false;const finish=(err,data)=>{if(done)return;done=true;delete window[cb];script.remove();err?reject(err):resolve(data)};window[cb]=res=>{try{const cols=(res.table?.cols||[]).map(c=>c.label||'');const rows=[cols,...(res.table?.rows||[]).map(r=>(r.c||[]).map(c=>c?(c.f??c.v??'') : ''))];finish(null,mapAssignedRows(rows))}catch(e){finish(e)}};script.src=ASIGNADAS_GVIZ_URL+'&tqx=responseHandler:'+cb;script.onerror=()=>finish(new Error('No se pudieron cargar las asignadas'));document.head.appendChild(script);setTimeout(()=>finish(new Error('Tiempo de espera agotado')),12000)})}
+async function loadAssigned(){try{const r=await sheetFetch(ASIGNADAS_CSV_URL);if(!r.ok)throw new Error('asignadas');const data=mapAssignedRows(csvRows(await r.text()));if(data.length)return data}catch(e){}try{return await loadAssignedGViz()}catch(e){throw e}}
+async function loadAccesses(){try{const r=await sheetFetch(ACCESOS_CSV_URL);if(!r.ok)throw new Error('accesos');const rows=csvRows(await r.text());const hi=rows.findIndex(r=>String(r[0]||'').trim()==='Recurso');if(hi<0)return[];const h=rows[hi].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(hi+1).filter(r=>String(r[ix('Recurso')]||'').trim()).map((r,i)=>({id:'acc-'+i,title:String(r[ix('Recurso')]||'').trim(),desc:String(r[ix('Descripción')]||'').trim(),url:String(r[ix('URL web')]||'').trim()})).filter(x=>x.title);}catch(e){throw e}}
 
 async function loadNewDocuments(){try{
- const r=await fetch(NUEVOS_DOCUMENTOS_CSV_URL+'&_='+Date.now(),{cache:'no-store'});
+ const r=await sheetFetch(NUEVOS_DOCUMENTOS_CSV_URL+'&_='+Date.now());
  if(!r.ok)throw new Error('new-documents');
  const rows=csvRows(await r.text());if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
@@ -482,9 +572,9 @@ async function loadNewDocuments(){try{
   enlace:String(r[ix('Enlace')]||'').trim(),
   visible:String(r[ix('Visible')]||'').trim()
  })).filter(x=>!x.visible||/^(mostrar|s[ií]|si|sí|true|1|x)$/i.test(x.visible));
-}catch(e){return[]}}
+}catch(e){throw e}}
 async function loadPersonalDocuments(){try{
- const r=await fetch(DOCUMENTOS_PERSONALES_CSV_URL+'&_='+Date.now(),{cache:'no-store'});
+ const r=await sheetFetch(DOCUMENTOS_PERSONALES_CSV_URL+'&_='+Date.now());
  if(!r.ok)throw new Error('personal-documents');
  const rows=csvRows(await r.text());if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
@@ -496,9 +586,9 @@ async function loadPersonalDocuments(){try{
   enlace:String(r[ix('Enlace')]||'').trim(),
   carpeta:String(r[ix('Carpeta')]||'').trim()
  }));
-}catch(e){return[]}}
+}catch(e){throw e}}
 async function loadPendientes(){try{
- const r=await fetch(PENDIENTES_CSV_URL+'&_='+Date.now(),{cache:'no-store'});
+ const r=await sheetFetch(PENDIENTES_CSV_URL+'&_='+Date.now());
  if(!r.ok)throw new Error('pendientes');
  const rows=csvRows(await r.text());if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
@@ -512,9 +602,9 @@ async function loadPendientes(){try{
   url:String(r[ix('Enlace')]||'').trim(),
   notas:String(r[ix('Notas')]||'').trim()
  }));
-}catch(e){return[]}}
+}catch(e){throw e}}
 async function loadAlbaCosas(){try{
- const r=await fetch(ALBA_COSAS_CSV_URL+'&_='+Date.now(),{cache:'no-store'});
+ const r=await sheetFetch(ALBA_COSAS_CSV_URL+'&_='+Date.now());
  if(!r.ok)throw new Error('alba-cosas');
  const rows=csvRows(await r.text());if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
@@ -541,9 +631,9 @@ async function loadAlbaCosas(){try{
   actualizacion:String(r[ix('Última actualización')]||'').trim(),
   observaciones:String(r[ix('Observaciones')]||'').trim()
  }));
-}catch(e){return[]}}
+}catch(e){throw e}}
 async function loadSantiCosas(){try{
- const r=await fetch(SANTI_COSAS_CSV_URL+'&_='+Date.now(),{cache:'no-store'});
+ const r=await sheetFetch(SANTI_COSAS_CSV_URL+'&_='+Date.now());
  if(!r.ok)throw new Error('santi-cosas');
  const rows=csvRows(await r.text());if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
@@ -570,80 +660,94 @@ async function loadSantiCosas(){try{
   actualizacion:String(r[ix('Última actualización')]||'').trim(),
   observaciones:String(r[ix('Observaciones')]||'').trim()
  }));
-}catch(e){return[]}}
-async function loadRadar(){try{const r=await fetch(RADAR_CSV_URL,{cache:'no-store'});if(!r.ok)throw new Error('radar');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map((r,i)=>({legacyId:'radar-'+(r[ix('Fecha')]||'sin-fecha')+'-'+i,id:stableItemId('radar',[r[ix('Fecha')],r[ix('Título')]]),dismissIds:[stableItemId('radar',[r[ix('Fecha')],r[ix('Parlamentario')],r[ix('Título')],r[ix('URL')]])],fecha:sheetDateToISO(r[ix('Fecha')]),parlamentario:r[ix('Parlamentario')]||'',titulo:r[ix('Título')]||'',resumen:r[ix('Hechos')]||'',fuente:r[ix('Fuente')]||'',interpretacion:r[ix('Interpretación')]||'',relevancia:r[ix('Relevancia política')]||'',actuacion:r[ix('Actuación propuesta')]||'',url:r[ix('URL')]||'',area:'Otros'})).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){return[]}}
-async function loadBopv(){try{const sep=BOPV_CSV_URL.includes('?')?'&':'?';const r=await fetch(BOPV_CSV_URL+sep+'_='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('bopv');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Entrada')]||'').trim()).map((r,i)=>({legacyId:'bopv-'+(r[ix('Expediente / BOPV')]||i),id:stableItemId('bopv',String(r[ix('Expediente / BOPV')]||'').trim()?[r[ix('Expediente / BOPV')]]:[r[ix('Día de entrada')],r[ix('Entrada')]]),dismissIds:[stableItemId('bopv',[r[ix('Día de entrada')],r[ix('Entrada')],r[ix('Expediente / BOPV')],r[ix('Enlace oficial')],r[ix('Parlamentario')]])],fecha:sheetDateToISO(r[ix('Día de entrada')]),area:r[ix('Área / Departamento')]||'',responsable:r[ix('Parlamentario')]||'',categoria:r[ix('Clasificación')]||'BOPV',motivo:r[ix('Motivo / seguimiento')]||'',estado:r[ix('Estado')]||'',expediente:r[ix('Expediente / BOPV')]||'',url:r[ix('Enlace oficial')]||'',asunto:r[ix('Entrada')]||''})).filter(x=>String(x.estado||'Activo').toLowerCase()!=='inactivo'&&/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){return[]}}
+}catch(e){throw e}}
+async function loadRadar(){try{const r=await sheetFetch(RADAR_CSV_URL);if(!r.ok)throw new Error('radar');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map((r,i)=>({legacyId:'radar-'+(r[ix('Fecha')]||'sin-fecha')+'-'+i,id:stableItemId('radar',[r[ix('Fecha')],r[ix('Título')]]),dismissIds:[stableItemId('radar',[r[ix('Fecha')],r[ix('Parlamentario')],r[ix('Título')],r[ix('URL')]])],fecha:sheetDateToISO(r[ix('Fecha')]),parlamentario:r[ix('Parlamentario')]||'',titulo:r[ix('Título')]||'',resumen:r[ix('Hechos')]||'',fuente:r[ix('Fuente')]||'',interpretacion:r[ix('Interpretación')]||'',relevancia:r[ix('Relevancia política')]||'',actuacion:r[ix('Actuación propuesta')]||'',url:r[ix('URL')]||'',area:'Otros'})).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){throw e}}
+async function loadBopv(){try{const sep=BOPV_CSV_URL.includes('?')?'&':'?';const r=await sheetFetch(BOPV_CSV_URL+sep+'_='+Date.now());if(!r.ok)throw new Error('bopv');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Entrada')]||'').trim()).map((r,i)=>({legacyId:'bopv-'+(r[ix('Expediente / BOPV')]||i),id:stableItemId('bopv',String(r[ix('Expediente / BOPV')]||'').trim()?[r[ix('Expediente / BOPV')]]:[r[ix('Día de entrada')],r[ix('Entrada')]]),dismissIds:[stableItemId('bopv',[r[ix('Día de entrada')],r[ix('Entrada')],r[ix('Expediente / BOPV')],r[ix('Enlace oficial')],r[ix('Parlamentario')]])],fecha:sheetDateToISO(r[ix('Día de entrada')]),area:r[ix('Área / Departamento')]||'',responsable:r[ix('Parlamentario')]||'',categoria:r[ix('Clasificación')]||'BOPV',motivo:r[ix('Motivo / seguimiento')]||'',estado:r[ix('Estado')]||'',expediente:r[ix('Expediente / BOPV')]||'',url:r[ix('Enlace oficial')]||'',asunto:r[ix('Entrada')]||''})).filter(x=>String(x.estado||'Activo').toLowerCase()!=='inactivo'&&/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){throw e}}
 
 
 
 
 const LOAD_GUARD_MS=6000;
-async function safeLoad(loader,fallback=[],timeoutMs=3500){
+// ---- Carga de datos ----
+// Se pinta al instante con la última copia guardada en el dispositivo y cada fuente
+// se actualiza en segundo plano en cuanto llega. Si una fuente falla, se conserva la
+// copia anterior y se avisa arriba en lugar de dejar la sección vacía.
+const DATA_CACHE_PREFIX='gpvData:v1:';
+const DATA_SOURCES=[
+ {key:'agenda',label:'Agenda',load:()=>loadAgendaFromSheet(),get:()=>agendaItems,set:v=>{agendaItems=overlayById(v,'event','id_evento')}},
+ {key:'plazos',label:'Plazos',load:()=>loadPlazos(),get:()=>plazoItems,set:v=>{plazoItems=v}},
+ {key:'iniciativas',label:'Iniciativas',load:()=>loadInitiatives(),get:()=>initiativeItems,set:v=>{initiativeItems=v}},
+ {key:'asignadas',label:'Adjudicaciones',load:()=>loadAssigned(),get:()=>assignedItems,set:v=>{assignedItems=v}},
+ {key:'pendientes',label:'Pendientes',load:()=>loadPendientes(),get:()=>pendingItems,set:v=>{pendingItems=v}},
+ {key:'nuevosDocumentos',label:'Documentos',load:()=>loadNewDocuments(),get:()=>newDocsItems,set:v=>{newDocsItems=v}},
+ {key:'documentosPersonales',label:'Documentos personales',load:()=>loadPersonalDocuments(),get:()=>personalDocsItems,set:v=>{personalDocsItems=v}},
+ {key:'santiCosas',label:'Buzón',cache:false,load:()=>loadSantiCosas(),get:()=>santiCosasItems,set:v=>{santiCosasItems=v}},
+ {key:'albaCosas',label:'Buzón',cache:false,load:()=>loadAlbaCosas(),get:()=>albaCosasItems,set:v=>{albaCosasItems=v}},
+ {key:'radar',label:'Radar',load:()=>loadRadar(),get:()=>radarItems,set:v=>{radarItems=v}},
+ {key:'bopv',label:'BOPV',load:()=>loadBopv(),get:()=>bopvItems,set:v=>{bopvItems=v}},
+ {key:'accesos',label:'Accesos',load:()=>loadAccesses(),get:()=>accessItems,set:v=>{accessItems=v}}
+];
+let sourceErrors=new Set(),dataRefreshBusy=false,firstPaintDone=false,firstLoadPending=false,renderQueued=false,renderPending=false;
+function readDataCache(key){try{const v=JSON.parse(localStorage.getItem(DATA_CACHE_PREFIX+key)||'null');return v&&Array.isArray(v.data)?v:null}catch(e){return null}}
+function writeDataCache(key,data){try{localStorage.setItem(DATA_CACHE_PREFIX+key,JSON.stringify({t:Date.now(),data}))}catch(e){}}
+function hydrateFromCache(){let any=false;for(const s of DATA_SOURCES){if(s.cache===false)continue;const c=readDataCache(s.key);if(c){s.set(c.data);any=true}}const k=readDataCache('buzonAgendaKeys');if(k)storedBuzonAgendaKeys=new Set(k.data);return any}
+function setSourceData(key,data){const s=DATA_SOURCES.find(x=>x.key===key);if(!s)return false;const before=JSON.stringify(s.get());s.set(data);if(s.cache!==false)writeDataCache(key,data);if(key==='santiCosas'||key==='albaCosas')rememberBuzonAgendaKeys();return before!==JSON.stringify(s.get())}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout de carga')),ms))])}
+async function loadSourceWithRetry(s){let last;for(let i=0;i<2;i++){try{return await withTimeout(Promise.resolve().then(s.load),20000)}catch(e){last=e;if(i===0)await sleep(1500)}}throw last}
+async function refreshAllData(force=false,only=null){
+ if(!session?.user)return;if(dataRefreshBusy&&!only)return;
+ if(!only)dataRefreshBusy=true;const who=session;
+ const sources=DATA_SOURCES.filter(s=>!only||only.includes(s.key));
  try{
-  return await Promise.race([
-   Promise.resolve().then(()=>loader()),
-   new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout de carga')),timeoutMs))
-  ]);
- }catch(e){
-  console.warn('Fuente no disponible o demasiado lenta:',e);
-  return fallback;
- }
+  await Promise.all(sources.map(async s=>{
+   try{const data=await loadSourceWithRetry(s);if(session!==who)return;sourceErrors.delete(s.label);if(setSourceData(s.key,data))scheduleRender()}
+   catch(e){console.warn('Fuente no disponible:',s.label,e);if(session!==who)return;const buzonAjeno=(s.key==='santiCosas'&&!isBuzonOwner('santi lopez'))||(s.key==='albaCosas'&&!isBuzonOwner('alba langarica'));if(!buzonAjeno){sourceErrors.add(s.label);updateSyncBanner()}}
+  }));
+ }finally{if(!only)dataRefreshBusy=false}
+ if(session!==who)return;
+ if(!only){const failed=[...sourceErrors];if(!failed.includes('Iniciativas')&&!failed.includes('Buzón')){startupNotificationsChecked=false;setTimeout(checkStartupNotifications,80)}}
+ scheduleRender();
 }
-async function loadData(){
- if(taskUserEnabled()&&tasksLoadedFor!==taskKey())loadPersonalTasks();
- const [
-   agenda,
-   plazos,
-   iniciativas,
-   asignadas,
-   pendientes,
-   nuevosDocumentos,
-   documentosPersonales,
-   santiCosas,
-   albaCosas,
-   radar,
-   bopv,
-   accesos,
-   remoteTasks,
-   remoteDiscards
- ] = await Promise.all([
-   safeLoad(loadAgendaFromSheet,[]),
-   safeLoad(loadPlazos,[]),
-   safeLoad(loadInitiatives,[]),
-   safeLoad(loadAssigned,[]),
-   safeLoad(loadPendientes,[]),
-   safeLoad(loadNewDocuments,[]),
-   safeLoad(loadPersonalDocuments,[]),
-   safeLoad(loadSantiCosas,[]),
-   safeLoad(loadAlbaCosas,[]),
-   safeLoad(loadRadar,[]),
-   safeLoad(loadBopv,[]),
-   safeLoad(loadAccesses,[]),
-   safeLoad(loadRemoteTasks,null,3500),
-   safeLoad(loadRemoteDismissals,null,3500)
- ]);
-
-
- agendaItems=agenda;
- plazoItems=plazos;
- initiativeItems=iniciativas;
- assignedItems=asignadas;
- pendingItems=pendientes;
- newDocsItems=nuevosDocumentos;
- personalDocsItems=documentosPersonales;
- santiCosasItems=santiCosas;
- albaCosasItems=albaCosas;
- radarItems=radar;
- bopvItems=bopv;
- accessItems=accesos;
- applyRemoteUserState(remoteTasks,remoteDiscards);
- render();
- setTimeout(checkStartupNotifications,80);
-}
-
-
+function isBuzonOwner(n){return normPerson(currentPersonName())===n}
+// Evita repintar mientras hay un formulario abierto o se está escribiendo; se repinta al terminar.
+function uiBusy(){const m=document.getElementById('modal');if(m&&m.innerHTML.trim())return true;const a=document.activeElement;return !!(a&&a!==document.body&&app.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))}
+function scheduleRender(){if(!session||!firstPaintDone||renderQueued)return;renderQueued=true;setTimeout(()=>{renderQueued=false;if(!session)return;if(uiBusy()){renderPending=true;return}renderPending=false;render()},60)}
+setInterval(()=>{if(renderPending&&session&&firstPaintDone&&!uiBusy()){renderPending=false;render()}},1500);
 async function guardedLoadData(){
- try{await loadData()}catch(e){console.error(e);render()}
+ try{
+  if(taskUserEnabled()&&tasksLoadedFor!==taskKey())loadPersonalTasks();
+  firstPaintDone=false;sourceErrors=new Set();
+  const hadCache=hydrateFromCache();firstLoadPending=!hadCache;
+  if(hadCache){firstPaintDone=true;render()}
+  refreshRemoteUserState();verifyOutbox();
+  const all=refreshAllData(true);
+  if(!hadCache){await Promise.race([all,sleep(6000)]);firstPaintDone=true;render()}
+  await all;
+ }catch(e){console.error(e);firstPaintDone=true;render()}
+ finally{firstLoadPending=false;updateSyncBanner()}
+}
+function syncBannerHTML(){
+ if(!session)return '';
+ const parts=[];let cls='';
+ const out=myOutbox(),failed=out.filter(x=>x.failed).length,waiting=out.length-failed;
+ if(firstLoadPending){parts.push('<span>Actualizando datos…</span>');cls='loading'}
+ if(sourceErrors.size)parts.push(`<span>No se ha podido actualizar: <b>${esc([...sourceErrors].join(', '))}</b>. Se muestra la última copia guardada.</span><button type="button" data-sync-retry>Reintentar</button>`);
+ if(failed)parts.push(`<span><b>${failed} ${failed===1?'cambio no se ha':'cambios no se han'} podido guardar</b> en el Excel.</span><button type="button" data-outbox-retry>Reintentar</button><button type="button" data-outbox-discard>Descartar</button>`);
+ else if(waiting)parts.push(`<span>Guardando ${waiting} ${waiting===1?'cambio':'cambios'} en el Excel…</span>`);
+ if(!parts.length)return '';
+ if(!failed&&!sourceErrors.size&&waiting)cls='loading';
+ return `<div class="sync-banner ${cls}">${parts.join('')}</div>`;
+}
+function updateSyncBanner(){
+ const main=app&&app.querySelector('main');if(!main)return;
+ const old=main.querySelector(':scope > .sync-banner');if(old)old.remove();
+ const html=syncBannerHTML();if(!html)return;
+ main.insertAdjacentHTML('afterbegin',html);
+ const b=main.querySelector(':scope > .sync-banner');
+ const r=b.querySelector('[data-sync-retry]');if(r)r.onclick=()=>{sourceErrors=new Set();updateSyncBanner();refreshAllData(true)};
+ const o=b.querySelector('[data-outbox-retry]');if(o)o.onclick=retryFailedWrites;
+ const d=b.querySelector('[data-outbox-discard]');if(d)d.onclick=()=>{if(confirm('¿Descartar los cambios que no se han podido guardar?'))discardFailedWrites()};
 }
 
 
@@ -656,8 +760,8 @@ function areaClass(area){const a=normPerson(area);if(a.includes('justicia')||a.i
 
 function normPerson(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
 function currentUserConfig(){const email=(session?.user?.email||'').trim().toLowerCase();return PEOPLE[email]||null}
-async function loadBancoDatos(){try{const r=await fetch(BANCO_DATOS_CSV_URL,{cache:'no-store'});if(!r.ok)throw new Error('banco');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const ixMostrar=ix('Mostrar');return rows.slice(1).filter(r=>String(r[ix('Dato')]||'').trim()).map((r,i)=>({id:'bd-'+i,departamento:r[ix('Departamento')]||'',area:r[ix('Área')]||'',dato:r[ix('Dato')]||'',explicacion:r[ix('Explicación del dato')]||'',fecha:r[ix('Fecha del Dato')]||'',fuente:r[ix('Fuente')]||'',url:r[ix('URL si hay')]||'',mostrar:ixMostrar>=0?String(r[ixMostrar]||'').trim().toLowerCase():''})).filter(x=>!/^#error!?$/i.test(x.dato));}catch(e){return[]}}
-function ensureBancoDatosLoaded(){if(bancoDatosLoaded||bancoDatosLoading)return;bancoDatosLoading=true;loadBancoDatos().then(items=>{bancoDatosItems=items;bancoDatosLoaded=true;bancoDatosLoading=false;if(tab==='Banco de Datos')render()})}
+async function loadBancoDatos(){try{const r=await sheetFetch(BANCO_DATOS_CSV_URL);if(!r.ok)throw new Error('banco');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const ixMostrar=ix('Mostrar');return rows.slice(1).filter(r=>String(r[ix('Dato')]||'').trim()).map((r,i)=>({id:'bd-'+i,departamento:r[ix('Departamento')]||'',area:r[ix('Área')]||'',dato:r[ix('Dato')]||'',explicacion:r[ix('Explicación del dato')]||'',fecha:r[ix('Fecha del Dato')]||'',fuente:r[ix('Fuente')]||'',url:r[ix('URL si hay')]||'',mostrar:ixMostrar>=0?String(r[ixMostrar]||'').trim().toLowerCase():''})).filter(x=>!/^#error!?$/i.test(x.dato));}catch(e){throw e}}
+function ensureBancoDatosLoaded(){if(bancoDatosLoaded||bancoDatosLoading)return;const cached=readDataCache('bancoDatos');if(cached){bancoDatosItems=cached.data;bancoDatosLoaded=true}bancoDatosLoading=true;loadBancoDatos().then(items=>{const changed=JSON.stringify(items)!==JSON.stringify(bancoDatosItems);bancoDatosItems=items;writeDataCache('bancoDatos',items);bancoDatosLoaded=true;if(changed&&tab==='Banco de Datos')scheduleRender()}).catch(e=>{console.warn('Banco de datos no disponible',e);if(!bancoDatosLoaded){bancoDatosLoaded=true;bancoDatosItems=[];sourceErrors.add('Banco de Datos');if(tab==='Banco de Datos')scheduleRender()}})}
 
 
 function isAdmin(){const email=(session?.user?.email||'').toLowerCase();return profile?.role==='admin'||email==='glangarica.a@legebiltzarra.eus'}
@@ -746,6 +850,21 @@ const AGENDA_KNOWN_LINKS={
  '2026-09-17|09:30':'https://www.legebiltzarra.eus/portal/es/inicio?p_p_id=legebiltzarraagendaportlet&p_p_lifecycle=1&p_p_state=pop_up&p_p_mode=view&_legebiltzarraagendaportlet_javax.portlet.action=detalle&_legebiltzarraagendaportlet_tipo=xmlEnAdelante&_legebiltzarraagendaportlet_hora=09%3A30&_legebiltzarraagendaportlet_dia=17.09.2026&_legebiltzarraagendaportlet_agendaId=17629&p_auth=e8e5a9fg',
  '2026-09-22|13:30':'https://www.legebiltzarra.eus/portal/es/inicio?p_p_id=legebiltzarraagendaportlet&p_p_lifecycle=1&p_p_state=pop_up&p_p_mode=view&_legebiltzarraagendaportlet_javax.portlet.action=detalle&_legebiltzarraagendaportlet_tipo=xmlEnAdelante&_legebiltzarraagendaportlet_hora=13%3A30&_legebiltzarraagendaportlet_dia=22.09.2026&_legebiltzarraagendaportlet_agendaId=17610&p_auth=eisWet9Q'
 };
+// ---- Agenda que viene del Buzón ----
+// Un asunto del Buzón solo entra en la agenda si alguien pulsa "Añadir a agenda", y ese
+// evento solo lo ve la persona a la que pertenece (y quien lo añadió), no el resto del grupo.
+// Si algo del Buzón llega a la hoja de agenda de forma automática, no se muestra a nadie.
+const BUZON_EVENT_PREFIX='EVT-BZN-';
+let storedBuzonAgendaKeys=new Set();
+function buzonAgendaKey(date,title){const d=sheetDateToISO(date||''),t=normPerson(title).replace(/\s+/g,' ');return d&&t?d+'|'+t:''}
+function currentBuzonAgendaKeys(){return [...(santiCosasItems||[]),...(albaCosasItems||[])].map(x=>buzonAgendaKey(x.fechaAsunto,x.asunto)).filter(Boolean)}
+function rememberBuzonAgendaKeys(){const merged=[...new Set([...currentBuzonAgendaKeys(),...storedBuzonAgendaKeys])].slice(0,600);storedBuzonAgendaKeys=new Set(merged);writeDataCache('buzonAgendaKeys',merged)}
+function isBuzonAgendaEvent(x){if(String(x.id_evento||'').startsWith(BUZON_EVENT_PREFIX))return true;const k=buzonAgendaKey(x.event_date,x.organ_activity);return !!k&&storedBuzonAgendaKeys.has(k)}
+function isManualAgendaEvent(x){if(String(x.id_evento||'').startsWith(BUZON_EVENT_PREFIX))return true;const c=normPerson(x.creado_por);return !!c&&DASHBOARDS.some(d=>normPerson(d.name)===c)}
+function agendaEventPeople(x){return [...String(x.parlamentario||'').split(/\s*(?:\/|;|,|\+|\by\b)\s*/i),x.creado_por].map(normPerson).filter(Boolean)}
+function agendaVisibleToCurrent(x){if(!isBuzonAgendaEvent(x))return true;if(!isManualAgendaEvent(x))return false;return agendaEventPeople(x).includes(normPerson(currentPersonName()))}
+function visibleAgendaItems(){return agendaItems.filter(agendaVisibleToCurrent)}
+function buzonItemInAgenda(item){const k=buzonAgendaKey(item.fechaAsunto,item.asunto);return !!k&&agendaItems.some(x=>isManualAgendaEvent(x)&&buzonAgendaKey(x.event_date,x.organ_activity)===k)}
 function isPlenoComisionAgenda(x){const t=normPerson(x.type||''),o=normPerson(x.organ_activity||'');return t.includes('pleno')||o.includes('pleno')||t.includes('comision')||o.includes('comision')}
 function agendaOrderLink(x){if(!isPlenoComisionAgenda(x))return '';const raw=String(x.agenda_link||'').trim();if(/^https?:\/\//i.test(raw))return raw;return AGENDA_KNOWN_LINKS[(x.event_date||'')+'|'+(x.event_time||'')]||''}
 function agendaOrderHTML(x){const link=agendaOrderLink(x);if(link)return `<a class="orderlink" href="${esc(link)}" target="_blank" rel="noopener">Ver orden del día →</a>`;return isPlenoComisionAgenda(x)?'<div class="agenda-detail">No hay enlace todavía disponible</div>':''}
@@ -760,13 +879,13 @@ function publicAgendaDetail(value){
   .replace(/^\s*[·•,;:.\-]+\s*|\s*[·•,;:.\-]+\s*$/g,'')
   .trim();
 }
-function agendaRows(full=false,showAll=false,excludeToday=false){let items=agendaItems.filter(x=>(showAll||isAdmin()||isOwnAgenda(x))&&agendaFilters.has(category(x)));if(full){items=items.filter(x=>x.event_date>=todayISO())}else{const hoy=todayISO(),limite=plusDaysISO(hoy,7);items=items.filter(x=>(x.type||'').toLowerCase()!=='vencimiento'&&x.event_date>=(excludeToday?plusDaysISO(hoy,1):hoy)&&x.event_date<=limite)}items.sort((a,b)=>(a.event_date+a.event_time).localeCompare(b.event_date+b.event_time));return items.length?items.map(x=>{const tag=agendaEntryTag(x);const link=agendaOrderLink(x);const orden=agendaOrderHTML(x);const zoom=x.group_zoom?`<a class="orderlink" href="${esc(x.group_zoom)}" target="_blank" rel="noopener">Entrar por Zoom →</a>`:'';const title=x.organ_activity||x.detail||'Evento';const safeDetail=publicAgendaDetail(x.detail);const detail=(x.organ_activity&&safeDetail&&normPerson(safeDetail)!==normPerson(x.organ_activity))?`<div class="agenda-detail">${esc(safeDetail)}</div>`:'';const place=x.location?`<div class="agenda-place">${esc(x.location)}</div>`:'';return `<div class="row agenda-entry"><div class="date">${fmtDate(x.event_date)}
+function agendaRows(full=false,showAll=false,excludeToday=false){let items=visibleAgendaItems().filter(x=>(showAll||isAdmin()||isOwnAgenda(x))&&agendaFilters.has(category(x)));if(full){items=items.filter(x=>x.event_date>=todayISO())}else{const hoy=todayISO(),limite=plusDaysISO(hoy,7);items=items.filter(x=>(x.type||'').toLowerCase()!=='vencimiento'&&x.event_date>=(excludeToday?plusDaysISO(hoy,1):hoy)&&x.event_date<=limite)}items.sort((a,b)=>(a.event_date+a.event_time).localeCompare(b.event_date+b.event_time));return items.length?items.map(x=>{const tag=agendaEntryTag(x);const link=agendaOrderLink(x);const orden=agendaOrderHTML(x);const zoom=x.group_zoom?`<a class="orderlink" href="${esc(x.group_zoom)}" target="_blank" rel="noopener">Entrar por Zoom →</a>`:'';const title=x.organ_activity||x.detail||'Evento';const safeDetail=publicAgendaDetail(x.detail);const detail=(x.organ_activity&&safeDetail&&normPerson(safeDetail)!==normPerson(x.organ_activity))?`<div class="agenda-detail">${esc(safeDetail)}</div>`:'';const place=x.location?`<div class="agenda-place">${esc(x.location)}</div>`:'';return `<div class="row agenda-entry"><div class="date">${fmtDate(x.event_date)}
 ${esc(x.event_time||'')}</div><div><span class="agenda-type-tag ${tag.cls}">${tag.label}</span><b>${esc(title)}</b>${detail}${place}${orden}${zoom}${agendaManualLinkHTML(x)}${agendaManageHTML(x)}</div></div>`}).join(''):`<div class="empty">${full||showAll?'No hay citas en las categorías seleccionadas.':'Sin citas tuyas en las categorías seleccionadas.'}</div>`}
 function agendaManualLinkHTML(x){if(isPlenoComisionAgenda(x))return '';const link=String(x.expediente_link||'').trim();return /^https?:\/\//i.test(link)?`<a class="orderlink" href="${esc(link)}" target="_blank" rel="noopener">Ver enlace →</a>`:''}
 function agendaManageHTML(x){if(!canManageAgendaEvents()||!x.id_evento)return '';return `<button type="button" class="linkbtn" data-edit-evento="${esc(x.id_evento)}" style="padding:4px 0 0;font-size:10.5px">✎ Editar / cancelar</button>`}
 function todayAgendaItemHTML(x){const tag=agendaEntryTag(x),title=x.organ_activity||publicAgendaDetail(x.detail)||'Evento',safeDetail=publicAgendaDetail(x.detail),detail=(x.organ_activity&&safeDetail&&normPerson(safeDetail)!==normPerson(x.organ_activity))?`<div class="agenda-detail">${esc(safeDetail)}</div>`:'',place=x.location?`<div class="agenda-place">${esc(x.location)}</div>`:'',zoom=x.group_zoom?`<a class="orderlink" href="${esc(x.group_zoom)}" target="_blank" rel="noopener">Entrar por Zoom →</a>`:'';return `<div class="row agenda-entry"><div class="date">${esc(x.event_time||'')}</div><div><span class="agenda-type-tag ${tag.cls}">${tag.label}</span><b>${esc(title)}</b>${detail}${place}${agendaOrderHTML(x)}${zoom}${agendaManualLinkHTML(x)}${agendaManageHTML(x)}</div></div>`}
 function todayAgendaBody(items,emptyText){const main=items.filter(x=>category(x)!=='Otros'),otros=items.filter(x=>category(x)==='Otros');const visible=main.map(todayAgendaItemHTML).join('');const folded=otros.length?`<details class="today-otros"><summary>OTROS (${otros.length})</summary>${otros.map(todayAgendaItemHTML).join('')}</details>`:'';return visible+folded||`<div class="empty">${emptyText}</div>`}
-function todayAgenda(showAll=false){const hoy=todayISO();let items=agendaItems.filter(x=>x.event_date===hoy&&(showAll||isAdmin()||isOwnAgenda(x)));items.sort((a,b)=>(a.event_time||'').localeCompare(b.event_time||''));const body=todayAgendaBody(items,showAll||isAdmin()?'No hay asuntos en la agenda de hoy.':'No tienes citas hoy.');return card('HOY',fmtDate(hoy),body).replace('class="card"','class="card agenda-card"')}
+function todayAgenda(showAll=false){const hoy=todayISO();let items=visibleAgendaItems().filter(x=>x.event_date===hoy&&(showAll||isAdmin()||isOwnAgenda(x)));items.sort((a,b)=>(a.event_time||'').localeCompare(b.event_time||''));const body=todayAgendaBody(items,showAll||isAdmin()?'No hay asuntos en la agenda de hoy.':'No tienes citas hoy.');return card('HOY',fmtDate(hoy),body).replace('class="card"','class="card agenda-card"')}
 function agenda(full=false,showAll=false){const labels=[['Plenos y Comisiones','Plenos y Comisiones'],['Grupo','Grupo'],['Mesa y Junta','Mesa y Junta'],['Otros','Otros']];const pills=labels.map(([x,l])=>`<button type="button" class="pill ${agendaFilters.has(x)?'active':''}" data-agenda-filter="${x}">${l}</button>`).join('');let rows=agendaRows(full,showAll,!full);const more=full?'':`<div class="extlinks"><button class="linkbtn" data-go="Agenda">→ Acceso a toda la agenda</button></div>`;const nuevo=canManageAgendaEvents()?`<div class="extlinks" style="border-top:0;padding-bottom:0"><button type="button" class="linkbtn" id="btnNuevoEvento">＋ Crear evento</button></div>`:'';return card('AGENDA',full?'Agenda parlamentaria completa':'Próximas citas',`${nuevo}<div class="pills">${pills}</div>${rows}${!full&&!showAll?vencimientos():''}${more}`).replace('class="card"','class="card agenda-card"') }
 function agendaPage(){return `<div class="pageintro"><h2>Agenda</h2><p>Toda la agenda parlamentaria · todo el grupo · filtra por tipo de actividad</p></div>${agenda(true,true)}`}
 function deadlineKey(x){
@@ -794,7 +913,7 @@ function dedupeDeadlines(items){
  }
  return out;
 }
-function vencimientos(){const fuente=[...agendaItems,...plazoItems];const hoy=new Date(todayISO()+'T00:00:00');const limite=new Date(hoy);limite.setDate(limite.getDate()+7);const filtered=fuente.filter(x=>{if((x.type||'').toLowerCase()!=='vencimiento')return false;if(!isAdmin()&&!isOwnAgenda(x))return false;const f=new Date(x.event_date+'T00:00:00');return f>=hoy&&f<=limite});const v=dedupeDeadlines(filtered).sort((a,b)=>a.event_date.localeCompare(b.event_date)).slice(0,isAdmin()?20:6);if(!v.length)return'';return `<section class="alert"><h3>VENCIMIENTOS</h3>${v.map(x=>`<p><b>${esc((x.detail||'').replace(/^[^:]+:\s*/,''))}</b> — ${fmtDate(x.event_date)}</p>`).join('')}</section>`}
+function vencimientos(){const fuente=[...visibleAgendaItems(),...plazoItems];const hoy=new Date(todayISO()+'T00:00:00');const limite=new Date(hoy);limite.setDate(limite.getDate()+7);const filtered=fuente.filter(x=>{if((x.type||'').toLowerCase()!=='vencimiento')return false;if(!isAdmin()&&!isOwnAgenda(x))return false;const f=new Date(x.event_date+'T00:00:00');return f>=hoy&&f<=limite});const v=dedupeDeadlines(filtered).sort((a,b)=>a.event_date.localeCompare(b.event_date)).slice(0,isAdmin()?20:6);if(!v.length)return'';return `<section class="alert"><h3>VENCIMIENTOS</h3>${v.map(x=>`<p><b>${esc((x.detail||'').replace(/^[^:]+:\s*/,''))}</b> — ${fmtDate(x.event_date)}</p>`).join('')}</section>`}
 function personOptions(items,value,attr){const people=[...new Set(items.map(x=>String(x.parlamentario||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));return `<select class="person-filter" ${attr}>${['Todos',...people].map(p=>`<option ${value===p?'selected':''}>${esc(p)}</option>`).join('')}</select>`}
 function solicitudes(){
  const all=initiativeItems.length?initiativeItems:[];
@@ -868,7 +987,7 @@ function equipoRadar(){
 }
 function canonicalGroupPerson(name){const n=normPerson(name);if(personAliases('Santi López').includes(n))return 'Santi López';if(personAliases('Ainhoa Domaica').includes(n))return 'Ainhoa Domaica';if(personAliases('Ana Morales').includes(n))return 'Ana Morales';if(personAliases('Álvaro Gotxi').includes(n))return 'Álvaro Gotxi';if(personAliases('Muriel Larrea').includes(n))return 'Muriel Larrea';if(personAliases('Laura Garrido').includes(n))return 'Laura Garrido';if(personAliases('Javier de Andrés').includes(n))return 'Javier de Andrés';return String(name||'').trim()}
 function equipoAdjudicacionesPlazos(){
- const allV=dedupeDeadlines([...agendaItems,...plazoItems].filter(x=>(x.type||'').toLowerCase()==='vencimiento'&&x.event_date>=todayISO()));
+ const allV=dedupeDeadlines([...visibleAgendaItems(),...plazoItems].filter(x=>(x.type||'').toLowerCase()==='vencimiento'&&x.event_date>=todayISO()));
  const assigned=assignedItems||[];
  const names=['Ainhoa Domaica','Álvaro Gotxi','Ana Morales','Javier de Andrés','Laura Garrido','Muriel Larrea','Santi López'];
  if(groupParlamentarioFilter!=='Todos')groupParlamentarioFilter=canonicalGroupPerson(groupParlamentarioFilter);
@@ -915,7 +1034,7 @@ function panelGeneral(){
 }
 function inicio(){return `${todayAgenda(false)}${homeTasks()}${agenda(false,false)}`}
 function groupPanel(){
- const allV=dedupeDeadlines([...agendaItems,...plazoItems].filter(x=>(x.type||'').toLowerCase()==='vencimiento'&&x.event_date>=todayISO()));
+ const allV=dedupeDeadlines([...visibleAgendaItems(),...plazoItems].filter(x=>(x.type||'').toLowerCase()==='vencimiento'&&x.event_date>=todayISO()));
  const assigned=assignedItems||[];
  const canonicalGroupPerson=name=>{const n=normPerson(name);if(personAliases('Santi López').includes(n))return 'Santi López';if(personAliases('Ainhoa Domaica').includes(n))return 'Ainhoa Domaica';if(personAliases('Ana Morales').includes(n))return 'Ana Morales';if(personAliases('Álvaro Gotxi').includes(n))return 'Álvaro Gotxi';if(personAliases('Muriel Larrea').includes(n))return 'Muriel Larrea';if(personAliases('Laura Garrido').includes(n))return 'Laura Garrido';if(personAliases('Javier de Andrés').includes(n))return 'Javier de Andrés';return String(name||'').trim()};
  const names=['Ainhoa Domaica','Álvaro Gotxi','Ana Morales','Javier de Andrés','Laura Garrido','Muriel Larrea','Santi López'];
@@ -973,14 +1092,15 @@ function buzon(){
    /^https?:\/\//i.test(x.enlaceDocumento)?`<a class="initiative-link" href="${esc(x.enlaceDocumento)}" target="_blank" rel="noopener">Ver documento →</a>`:''
   ].filter(Boolean).join(' ');
   const taskTitle=x.accion||x.asunto,taskPriority=/alta|urgente/i.test(x.prioridad||'')?'Urgente':'Pronto';
-  const addAgenda=(normPerson(currentPersonName())==='santi lopez'&&x.fechaAsunto)?`<button data-buzon-agenda="${esc(x.id)}">＋ Añadir a agenda</button>`:'';
+  const addAgenda=(normPerson(currentPersonName())==='santi lopez'&&x.fechaAsunto)?(buzonItemInAgenda(x)?`<button disabled>✓ En tu agenda</button>`:`<button data-buzon-agenda="${esc(x.id)}">＋ Añadir a agenda</button>`):'';
   return `<div class="initiative"><div class="initiative-top"><h4>${esc(x.asunto)}</h4>${priority}</div>${x.resumen?`<div class="meta" style="margin-top:7px">${esc(x.resumen)}</div>`:''}${x.accion?`<div class="initiative-note"><b>Acción necesaria:</b> ${esc(x.accion)}</div>`:''}<div class="initiative-meta">${meta}</div>${x.relacionado?`<div class="meta"><b>Relacionado con:</b> ${esc(x.relacionado)}</div>`:''}${x.lugar?`<div class="meta"><b>Lugar:</b> ${esc(x.lugar)}</div>`:''}${x.observaciones?`<div class="meta">${esc(x.observaciones)}</div>`:''}${links}<div class="radar-actions">${sourceTaskButton(taskTitle,[x.asunto,x.resumen,x.relacionado].filter(Boolean).join(' '),'',taskPriority)}${addAgenda}<button data-buzon-dismiss="${esc(x.id)}">✓ Descartar</button></div></div>`
  }).join(''):'<div class="empty">No hay asuntos en el buzón todavía.</div>';
  const notif='';
  return `<div class="pageintro"><h2>Buzón</h2><p>Correos, convocatorias y asuntos relevantes para ${owner}</p>${notif}</div>${card('BUZÓN',`${items.length} asuntos`,body)}`
 }
 function displayIdentity(){const email=(session?.user?.email||'').trim().toLowerCase();if(isPrensa())return {name:'Prensa',role:'PRENSA'};if(isEquipo())return {name:profile?.name||'Equipo',role:'EQUIPO'};if(email==='glangarica.a@legebiltzarra.eus')return {name:'Alba Langarica',role:'Administración'};if(isLaura())return {name:'Laura Garrido',role:'PORTAVOZ'};if(isJavier())return {name:profile?.name||'Javier de Andrés',role:'PARLAMENTARIO CON VISIÓN GENERAL'};const cfg=PEOPLE[email];if(cfg)return {name:cfg.name,role:'Parlamentario'};if(profile?.name){const r=profile?.role==='parlamentario'?'Parlamentario':profile?.role==='admin'?'Administración':profile?.role==='asesor'?'Asesor':(profile?.role||'Usuario');return {name:profile.name,role:r}}return {name:'Usuario',role:'Usuario'}}
-function render(){if(!session)return renderLogin();if(taskUserEnabled()&&tasksLoadedFor!==taskKey())loadPersonalTasks();const ident=displayIdentity(),name=ident.name,role=ident.role;if(isPrensa()){const tabs=[['Inicio','⌂','Inicio'],['Orden','☰','Orden del día'],['Radar','◎','Radar/BOPV'],['Panel','◉','Panel general'],['Iniciativas','▤','Iniciativas']];app.innerHTML=`<header><div class="headerline"><div class="brandline"></div><button class="logout" id="logout">Salir</button></div><h1>${esc(name)}</h1><span>${esc(role)}</span></header><main>${tab==='Inicio'?prensaInicio():tab==='Orden'?prensaOrdenDelDia():tab==='Radar'?equipoRadar():tab==='Panel'?panelGeneral():tab==='Iniciativas'?prensaIniciativas():tab==='Agenda'?agendaPage():prensaInicio()}</main><nav class="bottomnav">${tabs.map(([n,i,l])=>`<button data-tab="${n}" class="${tab===n?'active':''}"><span>${i}</span><small>${l}</small></button>`).join('')}</nav><div id="modal"></div>`;bind();return}if(isEquipo()){const tabs=[['Inicio','⌂','Inicio'],['Radar','◎','Radar/BOPV'],['Panel','◉','Panel general'],['Adjudicaciones','☑','Adjudicaciones'],['Solicitudes','▤','Solicitudes']];app.innerHTML=`<header><div class="headerline"><div class="brandline"></div><button class="logout" id="logout">Salir</button></div><h1>${esc(name)}</h1><span>${esc(role)}</span></header><main>${tab==='Inicio'?equipoInicio():tab==='Radar'?equipoRadar():tab==='Panel'?panelGeneral():tab==='Adjudicaciones'?equipoAdjudicacionesPlazos():tab==='Solicitudes'?equipoSolicitudes():tab==='Agenda'?agendaPage():equipoInicio()}</main><nav class="bottomnav">${tabs.map(([n,i,l])=>`<button data-tab="${n}" class="${tab===n?'active':''}"><span>${i}</span><small>${l}</small></button>`).join('')}</nav><div id="modal"></div>`;bind();return}const isSanti=normPerson(currentPersonName())==='santi lopez';const isAlbaUser=isAdmin()&&normPerson(currentPersonName())==='alba langarica';const lastTab=hasGroupView()?'Grupo':hasPendientesView()?'Pendientes':(isSanti||isAlbaUser)?'Buzón':'Agenda';const lastLabel=isLaura()?'Panel portavoz':isJavier()?'Panel grupo':hasPendientesView()?'Panel personal':(isSanti||isAlbaUser)?'Buzón':'Agenda';app.innerHTML=`<header><div class="headerline"><div class="brandline"></div><button class="logout" id="logout">Salir</button></div><h1>${esc(name)}</h1><span>${esc(role)}</span></header><main>${tab==='Inicio'?inicio():tab==='Radar'?radar():tab==='Panel'?panelGeneral():tab==='Grupo'?groupPanel():tab==='Pendientes'?pendientes():tab==='Buzón'?(buzonUnlocked?buzon():'<div class="soon"><h2>Buzón bloqueado</h2><p>Introduce la contraseña desde la pestaña Buzón.</p></div>'):tab==='Tareas'?tareasPage():tab==='Iniciativas'?iniciativas():tab==='Banco de Datos'?bancoDatos():tab==='Agenda'?agendaPage():`<div class="soon"><h2>${tab}</h2><p>Módulo preparado para la siguiente fase.</p></div>`}</main><nav class="bottomnav">${[['Inicio','⌂','Inicio'],['Radar','◎','Radar'],['Panel','◉','Panel general'],['Iniciativas','▤','Iniciativas'],[lastTab,'☑',lastLabel]].map(([n,i,l])=>`<button data-tab="${n}" class="${tab===n?'active':''}"><span>${i}</span><small>${l}</small></button>`).join('')}</nav><div id="modal"></div>`;bind()}
+function render(){renderView();if(session){firstPaintDone=true;updateSyncBanner()}}
+function renderView(){if(!session)return renderLogin();if(taskUserEnabled()&&tasksLoadedFor!==taskKey())loadPersonalTasks();const ident=displayIdentity(),name=ident.name,role=ident.role;if(isPrensa()){const tabs=[['Inicio','⌂','Inicio'],['Orden','☰','Orden del día'],['Radar','◎','Radar/BOPV'],['Panel','◉','Panel general'],['Iniciativas','▤','Iniciativas']];app.innerHTML=`<header><div class="headerline"><div class="brandline"></div><button class="logout" id="logout">Salir</button></div><h1>${esc(name)}</h1><span>${esc(role)}</span></header><main>${tab==='Inicio'?prensaInicio():tab==='Orden'?prensaOrdenDelDia():tab==='Radar'?equipoRadar():tab==='Panel'?panelGeneral():tab==='Iniciativas'?prensaIniciativas():tab==='Agenda'?agendaPage():prensaInicio()}</main><nav class="bottomnav">${tabs.map(([n,i,l])=>`<button data-tab="${n}" class="${tab===n?'active':''}"><span>${i}</span><small>${l}</small></button>`).join('')}</nav><div id="modal"></div>`;bind();return}if(isEquipo()){const tabs=[['Inicio','⌂','Inicio'],['Radar','◎','Radar/BOPV'],['Panel','◉','Panel general'],['Adjudicaciones','☑','Adjudicaciones'],['Solicitudes','▤','Solicitudes']];app.innerHTML=`<header><div class="headerline"><div class="brandline"></div><button class="logout" id="logout">Salir</button></div><h1>${esc(name)}</h1><span>${esc(role)}</span></header><main>${tab==='Inicio'?equipoInicio():tab==='Radar'?equipoRadar():tab==='Panel'?panelGeneral():tab==='Adjudicaciones'?equipoAdjudicacionesPlazos():tab==='Solicitudes'?equipoSolicitudes():tab==='Agenda'?agendaPage():equipoInicio()}</main><nav class="bottomnav">${tabs.map(([n,i,l])=>`<button data-tab="${n}" class="${tab===n?'active':''}"><span>${i}</span><small>${l}</small></button>`).join('')}</nav><div id="modal"></div>`;bind();return}const isSanti=normPerson(currentPersonName())==='santi lopez';const isAlbaUser=isAdmin()&&normPerson(currentPersonName())==='alba langarica';const lastTab=hasGroupView()?'Grupo':hasPendientesView()?'Pendientes':(isSanti||isAlbaUser)?'Buzón':'Agenda';const lastLabel=isLaura()?'Panel portavoz':isJavier()?'Panel grupo':hasPendientesView()?'Panel personal':(isSanti||isAlbaUser)?'Buzón':'Agenda';app.innerHTML=`<header><div class="headerline"><div class="brandline"></div><button class="logout" id="logout">Salir</button></div><h1>${esc(name)}</h1><span>${esc(role)}</span></header><main>${tab==='Inicio'?inicio():tab==='Radar'?radar():tab==='Panel'?panelGeneral():tab==='Grupo'?groupPanel():tab==='Pendientes'?pendientes():tab==='Buzón'?(buzonUnlocked?buzon():'<div class="soon"><h2>Buzón bloqueado</h2><p>Introduce la contraseña desde la pestaña Buzón.</p></div>'):tab==='Tareas'?tareasPage():tab==='Iniciativas'?iniciativas():tab==='Banco de Datos'?bancoDatos():tab==='Agenda'?agendaPage():`<div class="soon"><h2>${tab}</h2><p>Módulo preparado para la siguiente fase.</p></div>`}</main><nav class="bottomnav">${[['Inicio','⌂','Inicio'],['Radar','◎','Radar'],['Panel','◉','Panel general'],['Iniciativas','▤','Iniciativas'],[lastTab,'☑',lastLabel]].map(([n,i,l])=>`<button data-tab="${n}" class="${tab===n?'active':''}"><span>${i}</span><small>${l}</small></button>`).join('')}</nav><div id="modal"></div>`;bind()}
 function openBuzonPassword(){
  document.getElementById('modal').innerHTML=`<div class="modal"><div class="sheet"><h2>Acceso al Buzón</h2><p class="meta" style="margin-bottom:12px">Accede al buzón introduciendo la contraseña de tu correo electrónico.</p><input id="buzonPasswordInput" type="password" inputmode="numeric" autocomplete="off" placeholder="Contraseña"><div id="buzonPasswordError" class="error"></div><div class="actions"><button class="primary" id="unlockBuzon">Entrar</button><button id="cancelBuzonUnlock">Cancelar</button></div></div></div>`;
  const input=document.getElementById('buzonPasswordInput');
@@ -997,7 +1117,7 @@ function bind(){
   clearDashboard();
   agendaItems=[];plazoItems=[];initiativeItems=[];assignedItems=[];
   radarItems=[];bopvItems=[];accessItems=[];pendingItems=[];newDocsItems=[];
-  santiCosasItems=[];albaCosasItems=[];
+  santiCosasItems=[];albaCosasItems=[];sourceErrors=new Set();firstPaintDone=false;
   tab='Inicio';
   renderLogin();
  };
@@ -1023,7 +1143,7 @@ function bind(){
 
 
  const bdSearch=document.getElementById('bdSearch');
- if(bdSearch)bdSearch.oninput=()=>{bancoDatosSearch=bdSearch.value;render()};
+ if(bdSearch)bdSearch.oninput=()=>{bancoDatosSearch=bdSearch.value;clearTimeout(bdSearchTimer);bdSearchTimer=setTimeout(()=>{const pos=bdSearch.selectionStart;render();const again=document.getElementById('bdSearch');if(again){again.focus();try{again.setSelectionRange(pos,pos)}catch(e){}}},250)};
 
 
  document.querySelectorAll('[data-agenda-filter]').forEach(b=>b.onclick=()=>{
@@ -1085,11 +1205,11 @@ function bind(){
   const item=sourceItemById('buzon',id);if(!item)return;
   const fecha=sheetDateToISO(item.fechaAsunto||'');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){showToast('Falta una fecha válida para añadirlo a agenda');return}
-  const ev={event_date:fecha,event_time:item.hora||'Hora por confirmar',type:'Reunión',organ_activity:item.asunto||'Evento',location:item.lugar||'',detail:item.resumen||'',expediente_link:item.enlaceDocumento||item.enlaceCorreo||'',parlamentario:'Santi López',area_label:'',id_evento:generateEventoId(),creado_por:currentPersonName(),estado:'Activo'};
-  agendaItems=[...agendaItems,ev];render();
+  if(buzonItemInAgenda(item)){showToast('Ya está en tu agenda');return}
+  const ev={event_date:fecha,event_time:item.hora||'Hora por confirmar',type:'Reunión',organ_activity:item.asunto||'Evento',location:item.lugar||'',detail:item.resumen||'',expediente_link:item.enlaceDocumento||item.enlaceCorreo||'',parlamentario:'Santi López',area_label:'',id_evento:BUZON_EVENT_PREFIX+generateEventoId().slice(4),creado_por:currentPersonName(),estado:'Activo'};
+  agendaItems=[...agendaItems,ev];render();showToast('Guardando…',null,'info');
   const ok=await persistEvento(ev);
-  showToast(ok?'Añadido a la agenda de Santi':'No se pudo guardar en el Excel');
-  if(ok)setTimeout(refreshAgendaFromSheet,4000);
+  saveToast(ok,'Añadido a tu agenda');
  });
 
 
@@ -1110,7 +1230,7 @@ function bind(){
   if(tasks.some(t=>sourceTaskKey(t.title)===sourceTaskKey(title))){showToast('Esta tarea ya estaba añadida');return}
   const item={id:Date.now(),title,area:String(b.dataset.taskArea||''),priority:String(b.dataset.taskPriority||'Pronto'),when:'Sin fecha',done:false};
   tasks.push(item);saveTasksLocal();render();
-  const ok=await persistTask(item);showToast(ok?'Tarea añadida':'Tarea guardada en el dispositivo; falta enviarla al Excel');
+  showToast('Guardando…',null,'info');const ok=await persistTask(item);saveToast(ok,'Tarea añadida');
  });
 
 
@@ -1124,7 +1244,7 @@ function bind(){
   tasks=tasks.map(x=>String(x.id)===String(id)?{...x,done:!x.done}:x);
   const item=tasks.find(x=>String(x.id)===String(id));
   saveTasksLocal();render();
-  const ok=await updateTaskRemote(item);showToast(ok?(item.done?'Tarea completada':'Tarea reabierta'):'No se pudo actualizar el Excel');
+  const ok=await updateTaskRemote(item);saveToast(ok,item.done?'Tarea completada':'Tarea reabierta');
  });
 
 
