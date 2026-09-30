@@ -199,7 +199,7 @@ const AREA_KEYWORDS={
  'Deporte':['deporte','deportivo'], 'Educación':['educacion','escuela','ope','maestro','euskera','alumno'], 'Ciencia, Universidades e Innovación':['ciencia','universidad','innovacion','investigacion'],
  'Lehendakaritza':['lehendakaritza','lehendakari','pradales'], 'Política Lingüística':['politica linguistica','euskera','euskara'], 'Salud':['salud','osasun','hospital','sanidad'], 'Bienestar, Juventud y Reto Demográfico':['bienestar','juventud','reto demografico','demografi','natalidad']
 };
-let session=null,profile=null,agendaItems=[],plazoItems=[],initiativeItems=[],assignedItems=[],radarItems=[],bopvItems=[],accessItems=[],pendingItems=[],newDocsItems=[],personalDocsItems=[],santiCosasItems=[],albaCosasItems=[],bancoDatosItems=[],bancoDatosLoaded=false,bancoDatosLoading=false,bancoDatosDep='Todos',bancoDatosSearch='',tab='Inicio',agendaFilters=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta','Otros']),homeTaskFilter='Urgente',initiativeFilter='Todas',homeInitiativeFilter='Todas',adminParlamentarioFilter='Todos',radarParlamentarioFilter='Todos',groupParlamentarioFilter='Todos';
+let session=null,profile=null,agendaItems=[],plazoItems=[],initiativeItems=[],assignedItems=[],radarItems=[],bopvItems=[],accessItems=[],pendingItems=[],newDocsItems=[],personalDocsItems=[],santiCosasItems=[],albaCosasItems=[],bancoDatosItems=[],bancoDatosLoaded=false,bancoDatosLoading=false,bancoDatosDep='Todos',bancoDatosSearch='',tab='Inicio',agendaFilters=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta','Otros']),homeTaskFilter='Urgente',initiativeFilter='Todas',initiativeTypeFilter='Todos',homeInitiativeFilter='Todas',adminParlamentarioFilter='Todos',radarParlamentarioFilter='Todos',groupParlamentarioFilter='Todos';
 let toastTimer=null,pendingUndo=null,startupNotificationsChecked=false,appNotificationTimer=null;
 const app=document.getElementById('app');
 const BUZON_PASSWORD='1234';
@@ -947,8 +947,37 @@ function radarCardHTML(x,compact=false){return `<div class="radarbody" data-rada
 function radarHome(){const items=radarInWindow(1,true);if(!items.length)return'';const pf=isAdmin()?`<div class="admin-filter"><b>Parlamentario</b>${personOptions(radarItems,radarParlamentarioFilter,'data-radar-person')}</div>`:'';return card(isAdmin()?'RADAR · TODO EL GRUPO':'RADAR · GOBIERNO VASCO','Hoy',pf+items.map(x=>radarCardHTML(x,true)).join(''))}
 function radar(){const items=radarInWindow(5,false);const pf=isAdmin()?`<div class="admin-filter"><b>Parlamentario</b>${personOptions(radarItems,radarParlamentarioFilter,'data-radar-person')}</div>`:'';return `<div class="pageintro"><h2>Radar</h2><p>${isAdmin()?'Todo el grupo':'Gobierno Vasco'} · seguimiento reciente</p></div>${bopvRadar()}${card(isAdmin()?'RADAR · TODO EL GRUPO':'RADAR · GOBIERNO VASCO',`${items.length} activos · últimos 5 días`,pf+(items.length?items.map(x=>radarCardHTML(x)).join('<div style="height:10px"></div>'):`<div class="empty">No hay asuntos del Radar en los últimos 5 días.</div>`))}<div class="meta" style="padding:10px 2px">${isAdmin()?'Vista completa del Radar, filtrable por parlamentario.':'Solo se muestran los asuntos asignados a '+esc(currentPersonName())+'.'} Descartar los oculta solo para ti.</div>`}
 function tareasHome(){const open=tasks.filter(t=>!t.done);return card('✓ TAREAS','',`<div class="quicktask"><input id="quickTaskText" placeholder="Añadir una tarea…"><div class="qrow"><select id="quickArea">${areaOptions()}</select><select id="quickPriority"><option>Pronto</option><option>Urgente</option><option>Cuando pueda</option></select><button id="quickAdd">Añadir</button></div></div>${['Urgente','Pronto','Cuando pueda'].map(p=>{const a=open.filter(x=>x.priority===p);return a.length?`<h3 class="group-title">${p.toUpperCase()}</h3>${a.slice(0,3).map(t=>taskHTML(t,false)).join('')}`:''}).join('')}<div class="extlinks"><button class="linkbtn" data-go="Tareas">→ Ver todas las tareas</button></div>`) }
-function assignedBlock(){
- let items=assignedItems||[];
+// ---- Filtro por tipo de iniciativa ----
+const INITIATIVE_KIND_ORDER=['PNL','Moción','Solicitud de información','Pregunta escrita','Pregunta oral','Interpelación','Comparecencia','Proposición de ley','Enmienda'];
+function initiativeKindLabel(raw){
+ const txt=String(raw||'').trim(),n=normPerson(txt);
+ if(!n||n==='iniciativa'||n==='asignada')return 'Otras';
+ if(/(^|[^a-z])pnl([^a-z]|$)/.test(n)||n.includes('proposicion no de ley'))return 'PNL';
+ if(n.startsWith('mocion'))return 'Moción';
+ if(n.includes('solicitud de informacion'))return 'Solicitud de información';
+ if(n.includes('pregunta escrita'))return 'Pregunta escrita';
+ if(n.includes('pregunta oral'))return 'Pregunta oral';
+ if(n.includes('interpelacion'))return 'Interpelación';
+ if(n.includes('comparecencia'))return 'Comparecencia';
+ if(n.includes('proposicion de ley'))return 'Proposición de ley';
+ if(n.includes('enmienda'))return 'Enmienda';
+ return txt.charAt(0).toUpperCase()+txt.slice(1);
+}
+function initiativeKind(x){return initiativeKindLabel(x.tipo||initiativeType(x.expediente))}
+function initiativeKindsIn(lists){
+ const found=new Set(lists.flat().map(initiativeKind));
+ return [...INITIATIVE_KIND_ORDER.filter(k=>found.has(k)),...[...found].filter(k=>!INITIATIVE_KIND_ORDER.includes(k)&&k!=='Otras').sort((a,b)=>a.localeCompare(b,'es')),...(found.has('Otras')?['Otras']:[])];
+}
+// Devuelve el tipo activo (o 'Todos' si el elegido no existe en esta vista) y la barra de filtros.
+function initiativeTypeBar(lists){
+ const kinds=initiativeKindsIn(lists);
+ const active=kinds.includes(initiativeTypeFilter)?initiativeTypeFilter:'Todos';
+ const bar=kinds.length>1?`<div class="pills initiative-type-filter" style="padding-left:2px;padding-right:2px">${['Todos',...kinds].map(k=>`<button type="button" class="pill ${active===k?'active':''}" data-initiative-type="${esc(k)}">${esc(k)}</button>`).join('')}</div>`:'';
+ return {active,bar};
+}
+function byInitiativeType(active){return x=>active==='Todos'||initiativeKind(x)===active}
+function assignedBlock(typeActive='Todos'){
+ let items=(assignedItems||[]).filter(byInitiativeType(typeActive));
  if(!isAdmin())items=items.filter(x=>isOwnPersonLabel(x.parlamentario));
  else if(adminParlamentarioFilter!=='Todos')items=items.filter(x=>normPerson(x.parlamentario)===normPerson(adminParlamentarioFilter)||personAliases(adminParlamentarioFilter).some(a=>normPerson(x.parlamentario)===a));
  const body=items.length?items.map(x=>`<div class="initiative"><div class="initiative-top"><h4>${esc(x.titulo)}</h4><span class="status">${esc(x.tipo||'Asignada')}</span></div><div class="initiative-meta">${isAdmin()?`<span><b>Parlamentario</b> · ${esc(x.parlamentario||'Sin asignar')}</span>`:''}<span><b>Autor</b> · ${esc(x.autor||'—')}</span><span><b>Plazo</b> · ${esc(x.vencimiento||'—')}</span></div>${initiativeLinkHTMLByTitle(x.titulo)}</div>`).join(''):`<div class="empty">No hay PNL o mociones asignadas.</div>`;
@@ -958,22 +987,28 @@ function iniciativas(){
  const all=initiativeItems.length?initiativeItems:[];
  let items=isAdmin()?all:all.filter(isOwnInitiative);
  if(isAdmin()&&adminParlamentarioFilter!=='Todos')items=items.filter(x=>x.parlamentario===adminParlamentarioFilter);
+ let assignedForTypes=assignedItems||[];if(!isAdmin())assignedForTypes=assignedForTypes.filter(x=>isOwnPersonLabel(x.parlamentario));
+ const typeFilter=initiativeTypeBar([items,assignedForTypes]);
+ items=items.filter(byInitiativeType(typeFilter.active));
  const isAnswered=x=>/respond|contestad|respuesta recibida|finalizad|cerrad/i.test(x.situacion||'');
  const visible=items.filter(x=>initiativeFilter==='Todas'||(initiativeFilter==='Contestadas'?isAnswered(x):!isAnswered(x)));
  const counts={todas:items.length,pendientes:items.filter(x=>!isAnswered(x)).length,contestadas:items.filter(isAnswered).length};
  const pills=['Todas','Pendientes','Contestadas'].map(f=>`<button type="button" class="pill ${initiativeFilter===f?'active':''}" data-initiative-filter="${f}">${f}</button>`).join('');
  const pf=isAdmin()?`<div class="admin-filter"><b>Parlamentario</b>${personOptions(all,adminParlamentarioFilter,'data-admin-person')}</div>`:'';
  const rows=visible.length?visible.map(x=>{const answered=isAnswered(x);const state=answered?'CONTESTADA':'PENDIENTE';const stateClass=answered?'answered':'status';const link=x.enlace?`<a class="initiative-link" href="${esc(x.enlace)}" target="_blank" rel="noopener">Ver iniciativa →</a>`:'';const responseLink=answered&&x.respuestaEnlace?` <a class="initiative-link" href="${esc(x.respuestaEnlace)}" target="_blank" rel="noopener">Ver respuesta →</a>`:'';const plazo=x.plazo?`<span><b>Plazo</b> · ${esc(x.plazo)}</span>`:'';const person=isAdmin()?`<span><b>Parlamentario</b> · ${esc(x.parlamentario||'Sin asignar')}</span>`:'';return `<div class="initiative"><div class="initiative-top"><h4>${esc(x.titulo)}</h4><span class="${stateClass}">${state}</span></div><div class="initiative-meta">${person}<span><b>Tipo</b> · ${esc(x.tipo||initiativeType(x.expediente))}</span>${plazo}</div>${link}${responseLink}</div>`}).join(''):`<div class="empty">No hay iniciativas en este estado.</div>`;
- return `<div class="pageintro"><h2>Iniciativas</h2><p>${isAdmin()?'Todas las iniciativas del grupo':'Solicitudes, preguntas y asignadas'}</p></div>${card(isAdmin()?'SOLICITUDES Y PREGUNTAS · TODO EL GRUPO':'SOLICITUDES Y PREGUNTAS',`${counts.pendientes} pendientes · ${counts.contestadas} contestadas`,`${pf}<div class="pills">${pills}</div>${rows}`)}${assignedBlock()}`
+ const showSolicitudes=typeFilter.active==='Todos'||items.length,showAssigned=typeFilter.active==='Todos'||assignedForTypes.some(byInitiativeType(typeFilter.active));
+ return `<div class="pageintro"><h2>Iniciativas</h2><p>${isAdmin()?'Todas las iniciativas del grupo':'Solicitudes, preguntas y asignadas'}</p></div>${typeFilter.bar}${showSolicitudes?card(isAdmin()?'SOLICITUDES Y PREGUNTAS · TODO EL GRUPO':'SOLICITUDES Y PREGUNTAS',`${counts.pendientes} pendientes · ${counts.contestadas} contestadas`,`${pf}<div class="pills">${pills}</div>${rows}`):''}${showAssigned?assignedBlock(typeFilter.active):''}`
 }
 function prensaOrdenDelDia(){return `<div class="pageintro"><h2>Orden del día</h2><p>Asuntos de hoy · todo el grupo</p></div>${todayAgenda(true)}`}
 function prensaIniciativas(){
  const all=assignedItems||[];
  const people=[...new Set(all.map(x=>String(x.parlamentario||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
  const filter=`<div class="admin-filter"><b>Parlamentario</b><select class="person-filter" data-group-person>${['Todos',...people].map(p=>`<option ${groupParlamentarioFilter===p?'selected':''}>${esc(p)}</option>`).join('')}</select></div>`;
- const items=all.filter(x=>groupParlamentarioFilter==='Todos'||normPerson(x.parlamentario)===normPerson(groupParlamentarioFilter));
- const rows=items.length?items.map(x=>`<div class="initiative"><div class="initiative-top"><h4>${esc(x.titulo)}</h4><span class="status">${esc(x.tipo||'Asignada')}</span></div><div class="initiative-meta"><span><b>Parlamentario</b> · ${esc(x.parlamentario||'Sin asignar')}</span><span><b>Autor</b> · ${esc(x.autor||'—')}</span><span><b>Plazo</b> · ${esc(x.vencimiento||'—')}</span></div>${initiativeLinkHTMLByTitle(x.titulo)}</div>`).join(''):'<div class="empty">No hay iniciativas asignadas para este parlamentario.</div>';
- return `<div class="pageintro"><h2>Iniciativas</h2><p>Solo iniciativas asignadas · filtra por parlamentario</p></div>${filter}${card('INICIATIVAS ASIGNADAS',`${items.length} asignadas`,rows)}`
+ const byPerson=all.filter(x=>groupParlamentarioFilter==='Todos'||normPerson(x.parlamentario)===normPerson(groupParlamentarioFilter));
+ const typeFilter=initiativeTypeBar([all]);
+ const items=byPerson.filter(byInitiativeType(typeFilter.active));
+ const rows=items.length?items.map(x=>`<div class="initiative"><div class="initiative-top"><h4>${esc(x.titulo)}</h4><span class="status">${esc(x.tipo||'Asignada')}</span></div><div class="initiative-meta"><span><b>Parlamentario</b> · ${esc(x.parlamentario||'Sin asignar')}</span><span><b>Autor</b> · ${esc(x.autor||'—')}</span><span><b>Plazo</b> · ${esc(x.vencimiento||'—')}</span></div>${initiativeLinkHTMLByTitle(x.titulo)}</div>`).join(''):'<div class="empty">No hay iniciativas de este tipo para este parlamentario.</div>';
+ return `<div class="pageintro"><h2>Iniciativas</h2><p>Solo iniciativas asignadas · filtra por tipo y parlamentario</p></div>${typeFilter.bar}${filter}${card('INICIATIVAS ASIGNADAS',`${items.length} asignadas`,rows)}`
 }
 function prensaInicio(){return `${todayAgenda(true)}${agenda(false,true)}`}
 function equipoInicio(){return `${todayAgenda(true)}${agenda(false,true)}`}
@@ -994,16 +1029,18 @@ function equipoAdjudicacionesPlazos(){
  const filter=`<div class="admin-filter"><b>Parlamentario</b><select class="person-filter" data-group-person>${['Todos',...names].map(p=>`<option ${groupParlamentarioFilter===p?'selected':''}>${esc(p)}</option>`).join('')}</select></div>`;
  const v=allV.filter(x=>groupParlamentarioFilter==='Todos'||canonicalGroupPerson(String((x.detail||'').split(':')[0]||'').trim())===groupParlamentarioFilter).sort((a,b)=>a.event_date.localeCompare(b.event_date));
  const vRows=v.length?v.map(x=>{const who=canonicalGroupPerson(String((x.detail||'').split(':')[0]||'').trim());const detail=String(x.detail||'').replace(/^[^:]+:\s*/,'');return `<div class="row"><div class="date">${fmtDate(x.event_date)}\n${esc(x.event_time||'')}</div><div><b>${esc(detail)}</b><small>${esc(who||'Sin asignar')}${x.organ_activity?' · '+esc(x.organ_activity):''}</small>${initiativeLinkHTMLByTitle(detail)}</div></div>`}).join(''):'<div class="empty">No hay plazos próximos para este parlamentario.</div>';
- const a=assigned.filter(x=>groupParlamentarioFilter==='Todos'||canonicalGroupPerson(x.parlamentario)===groupParlamentarioFilter);
+ const typeFilter=initiativeTypeBar([assigned]);
+ const a=assigned.filter(x=>groupParlamentarioFilter==='Todos'||canonicalGroupPerson(x.parlamentario)===groupParlamentarioFilter).filter(byInitiativeType(typeFilter.active));
  const aRows=a.length?a.map(x=>`<div class="initiative"><div class="initiative-top"><h4>${esc(x.titulo)}</h4><span class="status">${esc(x.tipo||'Asignada')}</span></div><div class="initiative-meta"><span><b>Parlamentario</b> · ${esc(x.parlamentario||'Sin asignar')}</span><span><b>Autor</b> · ${esc(x.autor||'—')}</span><span><b>Plazo</b> · ${esc(x.vencimiento||'—')}</span></div>${initiativeLinkHTMLByTitle(x.titulo)}</div>`).join(''):'<div class="empty">No hay adjudicaciones para este parlamentario.</div>';
- return `<div class="pageintro"><h2>Adjudicaciones y plazos</h2><p>Filtra por parlamentario</p></div>${filter}${card('ADJUDICACIONES',`${a.length} asignadas`,aRows)}${card('PLAZOS',`${v.length} próximos`,vRows)}`
+ return `<div class="pageintro"><h2>Adjudicaciones y plazos</h2><p>Filtra por parlamentario</p></div>${filter}${typeFilter.bar}${card('ADJUDICACIONES',`${a.length} asignadas`,aRows)}${card('PLAZOS',`${v.length} próximos`,vRows)}`
 }
 function equipoSolicitudes(){
  const all=initiativeItems||[];const people=[...new Set(all.map(x=>String(x.parlamentario||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
  const filter=`<div class="admin-filter"><b>Parlamentario</b><select class="person-filter" data-admin-person>${['Todos',...people].map(p=>`<option ${adminParlamentarioFilter===p?'selected':''}>${esc(p)}</option>`).join('')}</select></div>`;
- const items=all.filter(x=>adminParlamentarioFilter==='Todos'||normPerson(x.parlamentario)===normPerson(adminParlamentarioFilter));const isAnswered=x=>/respond|contestad|respuesta recibida|finalizad|cerrad/i.test(x.situacion||'');const visible=items.filter(x=>initiativeFilter==='Todas'||(initiativeFilter==='Contestadas'?isAnswered(x):!isAnswered(x)));const pills=['Todas','Pendientes','Contestadas'].map(f=>`<button type="button" class="pill ${initiativeFilter===f?'active':''}" data-initiative-filter="${f}">${f}</button>`).join('');
+ const typeFilter=initiativeTypeBar([all]);
+ const items=all.filter(x=>adminParlamentarioFilter==='Todos'||normPerson(x.parlamentario)===normPerson(adminParlamentarioFilter)).filter(byInitiativeType(typeFilter.active));const isAnswered=x=>/respond|contestad|respuesta recibida|finalizad|cerrad/i.test(x.situacion||'');const visible=items.filter(x=>initiativeFilter==='Todas'||(initiativeFilter==='Contestadas'?isAnswered(x):!isAnswered(x)));const pills=['Todas','Pendientes','Contestadas'].map(f=>`<button type="button" class="pill ${initiativeFilter===f?'active':''}" data-initiative-filter="${f}">${f}</button>`).join('');
  const rows=visible.length?visible.map(x=>{const answered=isAnswered(x),state=answered?'CONTESTADA':'PENDIENTE',stateClass=answered?'answered':'status',link=x.enlace?`<a class="initiative-link" href="${esc(x.enlace)}" target="_blank" rel="noopener">Ver iniciativa →</a>`:'',responseLink=answered&&x.respuestaEnlace?` <a class="initiative-link" href="${esc(x.respuestaEnlace)}" target="_blank" rel="noopener">Ver respuesta →</a>`:'';return `<div class="initiative"><div class="initiative-top"><h4>${esc(x.titulo)}</h4><span class="${stateClass}">${state}</span></div><div class="initiative-meta"><span><b>Parlamentario</b> · ${esc(x.parlamentario||'Sin asignar')}</span><span><b>Tipo</b> · ${esc(x.tipo||initiativeType(x.expediente))}</span>${x.plazo?`<span><b>Plazo</b> · ${esc(x.plazo)}</span>`:''}</div>${link}${responseLink}</div>`}).join(''):'<div class="empty">No hay solicitudes o preguntas en este estado.</div>';
- return `<div class="pageintro"><h2>Solicitudes y preguntas</h2><p>Todo el grupo · filtra por parlamentario</p></div>${filter}${card('SOLICITUDES Y PREGUNTAS',`${items.filter(x=>!isAnswered(x)).length} pendientes · ${items.filter(isAnswered).length} contestadas`,`<div class="pills">${pills}</div>${rows}`)}`
+ return `<div class="pageintro"><h2>Solicitudes y preguntas</h2><p>Todo el grupo · filtra por tipo y parlamentario</p></div>${typeFilter.bar}${filter}${card('SOLICITUDES Y PREGUNTAS',`${items.filter(x=>!isAnswered(x)).length} pendientes · ${items.filter(isAnswered).length} contestadas`,`<div class="pills">${pills}</div>${rows}`)}`
 }
 function bancoDatoMatchesMyAreas(x){if(isAdmin())return true;const areas=currentAreas();const text=((x.departamento||'')+' '+(x.area||'')).toLowerCase();return areas.some(a=>{const al=a.toLowerCase();if(text.includes(al))return true;const keys=AREA_KEYWORDS[a]||[];return keys.some(k=>text.includes(k))})}
 function bancoDatos(){
@@ -1164,6 +1201,11 @@ function bind(){
   const f=b.dataset.agendaFilter;
   if(agendaFilters.has(f))agendaFilters.delete(f);else agendaFilters.add(f);
   render();
+ });
+
+
+ document.querySelectorAll('[data-initiative-type]').forEach(b=>b.onclick=()=>{
+  initiativeTypeFilter=b.dataset.initiativeType;render();
  });
 
 
