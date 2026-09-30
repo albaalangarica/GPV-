@@ -1073,9 +1073,22 @@ function buzonDismissKey(itemId){
  const who=normPerson(currentPersonName()).replace(/\s+/g,'-')||'usuario';
  return `gpvBuzonDismissed:${who}:${itemId}`;
 }
+function buzonVisibleItems(){
+ const isAlbaUser=isAdmin()&&normPerson(currentPersonName())==='alba langarica';
+ return (isAlbaUser?(albaCosasItems||[]):(santiCosasItems||[])).filter(x=>!itemDismissed('buzon',x));
+}
+// Descarta (o restaura) varias entradas: la pantalla cambia al momento y los envíos al
+// Excel salen de uno en uno para no saturar el script.
+// Si se pulsa "Deshacer" mientras aún se envía, se corta el envío anterior.
+let buzonBulkRun=0;
+async function setBuzonDismissalBulk(items,value){
+ const run=++buzonBulkRun;
+ for(const x of items){setLocalDismissal('buzon',x,value);const key='buzon:'+x.id;value?remoteDismissed.add(key):remoteDismissed.delete(key)}
+ for(const x of items){if(run!==buzonBulkRun)return;dismissalApi(value?'descartar_item':'restaurar_descarte','buzon',x);await sleep(250)}
+}
 function buzon(){
  const isAlbaUser=isAdmin()&&normPerson(currentPersonName())==='alba langarica';
- const items=(isAlbaUser?(albaCosasItems||[]):(santiCosasItems||[])).filter(x=>!itemDismissed('buzon',x));
+ const items=buzonVisibleItems();
  const owner=isAlbaUser?'Alba':'Santi';
  const body=items.length?items.map(x=>{
   const priority=x.prioridad?`<span class="status ${/alta|urgente/i.test(x.prioridad)?'red':''}">${esc(x.prioridad)}</span>`:'';
@@ -1096,7 +1109,8 @@ function buzon(){
   return `<div class="initiative"><div class="initiative-top"><h4>${esc(x.asunto)}</h4>${priority}</div>${x.resumen?`<div class="meta" style="margin-top:7px">${esc(x.resumen)}</div>`:''}${x.accion?`<div class="initiative-note"><b>Acción necesaria:</b> ${esc(x.accion)}</div>`:''}<div class="initiative-meta">${meta}</div>${x.relacionado?`<div class="meta"><b>Relacionado con:</b> ${esc(x.relacionado)}</div>`:''}${x.lugar?`<div class="meta"><b>Lugar:</b> ${esc(x.lugar)}</div>`:''}${x.observaciones?`<div class="meta">${esc(x.observaciones)}</div>`:''}${links}<div class="radar-actions">${sourceTaskButton(taskTitle,[x.asunto,x.resumen,x.relacionado].filter(Boolean).join(' '),'',taskPriority)}${addAgenda}<button data-buzon-dismiss="${esc(x.id)}">✓ Descartar</button></div></div>`
  }).join(''):'<div class="empty">No hay asuntos en el buzón todavía.</div>';
  const notif='';
- return `<div class="pageintro"><h2>Buzón</h2><p>Correos, convocatorias y asuntos relevantes para ${owner}</p>${notif}</div>${card('BUZÓN',`${items.length} asuntos`,body)}`
+ const clearAll=items.length?`<div class="extlinks" style="border-top:0;padding:6px 0 0"><button type="button" class="linkbtn" id="buzonClearAll">🗑 Borrar todo el buzón</button></div>`:'';
+ return `<div class="pageintro"><h2>Buzón</h2><p>Correos, convocatorias y asuntos relevantes para ${owner}</p>${notif}${clearAll}</div>${card('BUZÓN',`${items.length} asuntos`,body)}`
 }
 function displayIdentity(){const email=(session?.user?.email||'').trim().toLowerCase();if(isPrensa())return {name:'Prensa',role:'PRENSA'};if(isEquipo())return {name:profile?.name||'Equipo',role:'EQUIPO'};if(email==='glangarica.a@legebiltzarra.eus')return {name:'Alba Langarica',role:'Administración'};if(isLaura())return {name:'Laura Garrido',role:'PORTAVOZ'};if(isJavier())return {name:profile?.name||'Javier de Andrés',role:'PARLAMENTARIO CON VISIÓN GENERAL'};const cfg=PEOPLE[email];if(cfg)return {name:cfg.name,role:'Parlamentario'};if(profile?.name){const r=profile?.role==='parlamentario'?'Parlamentario':profile?.role==='admin'?'Administración':profile?.role==='asesor'?'Asesor':(profile?.role||'Usuario');return {name:profile.name,role:r}}return {name:'Usuario',role:'Usuario'}}
 function render(){renderView();if(session){firstPaintDone=true;updateSyncBanner()}}
@@ -1211,6 +1225,17 @@ function bind(){
   const ok=await persistEvento(ev);
   saveToast(ok,'Añadido a tu agenda');
  });
+
+
+ const buzonClearAll=document.getElementById('buzonClearAll');
+ if(buzonClearAll)buzonClearAll.onclick=()=>{
+  const items=buzonVisibleItems();if(!items.length)return;
+  if(!confirm(`¿Borrar ${items.length===1?'la entrada':'las '+items.length+' entradas'} del buzón? Podrás deshacerlo justo después.`))return;
+  setBuzonDismissalBulk(items,true);render();
+  showToast(`Buzón vaciado (${items.length})`,()=>{
+   setBuzonDismissalBulk(items,false);render();showToast('Entradas restauradas');
+  });
+ };
 
 
  document.querySelectorAll('[data-buzon-dismiss]').forEach(b=>b.onclick=async()=>{
