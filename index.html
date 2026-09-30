@@ -1114,8 +1114,10 @@ function panelGeneral(){
  // Últimos documentos subidos al repositorio (el índice ya viene ordenado del más nuevo al más antiguo).
  // Si el índice aún no existe, se usan los "nuevos documentos" de siempre.
  ensureRepoLoaded();
- const fromRepo=repoItems.length&&repoItems[0].creado!==undefined&&repoItems.some(x=>x.creado);
- const docs=fromRepo?repoItems.slice(0,5).map(d=>({titulo:d.titulo,descripcion:d.carpeta,fecha:d.creado,enlace:d.enlace})):(newDocsItems||[]).slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,5);
+ // Con la columna "Creado" se muestran los últimos subidos; si no está, el índice viene
+ // ordenado por última modificación y se usa ese orden.
+ const fromRepo=repoItems.length>0;
+ const docs=fromRepo?repoItems.slice(0,5).map(d=>({titulo:d.titulo,descripcion:d.carpeta,fecha:d.creado||d.fecha,enlace:d.enlace})):(newDocsItems||[]).slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,5);
  const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item"><b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">Abrir documento →</a>`:''}</div>`).join(''):`<div class="newdoc-empty">No hay documentos nuevos disponibles.</div>`;
  const docsDropdown=`<details class="newdocs"><summary>${fromRepo?'ÚLTIMOS DOCUMENTOS DEL REPOSITORIO':'NUEVOS DOCUMENTOS DISPONIBLES'} <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
  const santiFolder=normPerson(currentPersonName())==='santi lopez'?`<a class="hubcard" href="https://drive.google.com/drive/folders/10mjx-n2F5KmkZOM26QmeLxxyZ10c4ciF" target="_blank" rel="noopener noreferrer"><div class="hubicon">📁</div><div class="hubtext"><b>Mi carpeta · Santi</b><span>Abrir directamente tu carpeta del Drive compartido GPV.</span></div><div class="hubarrow">›</div></a>`:'';
