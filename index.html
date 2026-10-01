@@ -143,6 +143,8 @@ body{font-size:13px}.app{max-width:760px}header{padding:17px 20px 20px}.eyebrow{
 .task-copy b{display:block;width:100%;margin:0;color:#17233b;font-size:11.5px;font-weight:700;line-height:1.3;white-space:normal;overflow:visible;overflow-wrap:anywhere}
 .task-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;color:#7b8799;font-size:9.5px}
 .task-meta small{display:inline;margin:0;color:#7b8799;font-size:9.5px}
+.task-meta small.task-due-overdue{color:#b3261e;font-weight:800}.task-meta small.task-due-today{color:#24458a;font-weight:800}
+.sheet .check-line{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#17233b;letter-spacing:0;margin:12px 0 4px}.sheet .check-line input{width:auto;margin:0}
 .task-label-below{display:inline-flex;align-items:center;margin:0;padding:3px 6px;border-radius:999px;background:rgba(36,69,138,.08);color:#24458a;font-size:9px;font-weight:700;line-height:1.15}
 .task-edit-btn{align-self:start;margin:0;border:0;background:transparent;color:#24458a;border-radius:5px;padding:3px 2px;font-size:9.5px;line-height:1.1;font-weight:750;cursor:pointer}
 .task-page-back{display:inline-flex;align-items:center;gap:5px;margin:0 0 14px;padding:8px 10px;border:1px solid #d5dce7;border-radius:8px;background:#fff;color:#24458a;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
@@ -438,22 +440,35 @@ function sourceTaskArea(title,areaHint='',personHint=''){
  }
  return '';
 }
+function sourceTaskStoreKey(){return 'gpvTareasOrigen:'+notificationUserKey()}
+function sourceTaskAddedKeys(){try{const v=JSON.parse(localStorage.getItem(sourceTaskStoreKey())||'[]');return new Set(Array.isArray(v)?v:[])}catch(e){return new Set()}}
+function markSourceTaskAdded(title){const keys=sourceTaskAddedKeys();keys.add(sourceTaskKey(title));try{localStorage.setItem(sourceTaskStoreKey(),JSON.stringify([...keys].slice(-500)))}catch(e){}}
 function sourceTaskButton(title,areaHint='',personHint='',priority='Pronto'){
  if(!taskUserEnabled()||!String(title||'').trim())return '';
- const cleanTitle=String(title).trim(),exists=tasks.some(t=>sourceTaskKey(t.title)===sourceTaskKey(cleanTitle));
+ const cleanTitle=String(title).trim(),exists=sourceTaskAddedKeys().has(sourceTaskKey(cleanTitle))||tasks.some(t=>sourceTaskKey(t.title)===sourceTaskKey(cleanTitle));
  const area=sourceTaskArea(cleanTitle,areaHint,personHint);
  return `<button type="button" class="quick-add-task ${exists?'added':''}" data-quick-task data-task-title="${esc(cleanTitle)}" data-task-area="${esc(area)}" data-task-priority="${esc(priority)}" ${exists?'disabled':''}>${exists?'✓ Añadida':'＋ Añadir tarea'}</button>`;
 }
-function taskHTML(t){return `<div class="task task-priority-card ${priorityClass(t.priority)}" data-task-id="${esc(t.id)}"><button class="check ${t.done?'done':''}" data-task-toggle="${esc(t.id)}" aria-label="${t.done?'Reabrir':'Completar'}"></button><div class="task-copy"><b>${esc(t.title)}</b><div class="task-meta">${t.area?`<span class="task-label-below">${esc(t.area)}</span>`:''}<small>${esc(t.priority||'Pronto')}</small>${t.when&&normPerson(t.when)!=='sin fecha'?`<small>📅 ${esc(t.when)}</small>`:''}</div></div><button class="task-edit-btn" data-task-edit="${esc(t.id)}">Editar</button></div>`}
+function taskDueISO(t){return taskDateToISO(t.when||'')}
+function taskDueHTML(t){
+ const iso=taskDueISO(t);if(!iso)return '';
+ const hoy=todayISO();
+ if(!t.done&&iso<hoy)return `<small class="task-due-overdue">⚠ Vencida · ${esc(t.when)}</small>`;
+ if(!t.done&&iso===hoy)return `<small class="task-due-today">📅 Hoy</small>`;
+ return `<small>📅 ${esc(t.when)}</small>`;
+}
+// Dentro de cada urgencia: primero las que vencen antes; las que no tienen fecha, al final.
+function byTaskDue(a,b){const da=taskDueISO(a)||'9999-99-99',db=taskDueISO(b)||'9999-99-99';return da.localeCompare(db)}
+function taskHTML(t){return `<div class="task task-priority-card ${priorityClass(t.priority)}" data-task-id="${esc(t.id)}"><button class="check ${t.done?'done':''}" data-task-toggle="${esc(t.id)}" aria-label="${t.done?'Reabrir':'Completar'}"></button><div class="task-copy"><b>${esc(t.title)}</b><div class="task-meta">${t.area?`<span class="task-label-below">${esc(t.area)}</span>`:''}<small>${esc(t.priority||'Pronto')}</small>${taskDueHTML(t)}</div></div><button class="task-edit-btn" data-task-edit="${esc(t.id)}">Editar</button></div>`}
 function homeTasks(){
  if(!taskUserEnabled())return '';
- const open=tasks.filter(t=>!t.done),visible=[...open.filter(t=>t.priority==='Urgente'),...open.filter(t=>t.priority==='Pronto'),...open.filter(t=>t.priority==='Cuando pueda')].slice(0,3);
+ const open=tasks.filter(t=>!t.done),visible=[...open.filter(t=>t.priority==='Urgente').sort(byTaskDue),...open.filter(t=>t.priority==='Pronto').sort(byTaskDue),...open.filter(t=>t.priority==='Cuando pueda').sort(byTaskDue)].slice(0,3);
  return card('✓ TAREAS','',`<div class="quicktask"><div class="qrow"><input id="quickTaskText" placeholder="Añadir una tarea…"><button id="quickTaskAdd">Añadir tarea</button></div></div>${visible.length?visible.map(taskHTML).join(''):'<div class="empty">No tienes tareas pendientes.</div>'}<div class="extlinks"><button class="linkbtn" data-go="Tareas">→ Todas las tareas</button></div>`);
 }
 function tareasPage(){
  if(!taskUserEnabled())return '<div class="empty">No disponible.</div>';
  let out=`<button type="button" class="task-page-back" data-go="Inicio">← Volver</button><div class="taskhead"><div><h2>Tareas</h2><div class="meta">Guardadas también en el Excel maestro</div></div><button id="newTask">＋ Nueva</button></div>`;
- for(const p of ['Urgente','Pronto','Cuando pueda']){const rows=tasks.filter(t=>!t.done&&t.priority===p);if(rows.length)out+=`<h3 class="group-title">${p.toUpperCase()}</h3><div class="taskbox">${rows.map(taskHTML).join('')}</div>`}
+ for(const p of ['Urgente','Pronto','Cuando pueda']){const rows=tasks.filter(t=>!t.done&&t.priority===p).sort(byTaskDue);if(rows.length)out+=`<h3 class="group-title">${p.toUpperCase()}</h3><div class="taskbox">${rows.map(taskHTML).join('')}</div>`}
  const done=tasks.filter(t=>t.done);if(done.length)out+=`<details class="completed-tasks"><summary>COMPLETADAS <span>${done.length}</span></summary><div class="taskbox">${done.map(taskHTML).join('')}</div></details>`;
  if(!tasks.length)out+='<div class="empty">No tienes tareas todavía.</div>';return out;
 }
@@ -463,12 +478,12 @@ function isoToTaskDate(iso){const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{
 function openTaskModal(id=null,prefill='',opts={}){
  const editing=id!==null,t=editing?tasks.find(x=>String(x.id)===String(id)):null;if(editing&&!t)return;
  const priority=t?.priority||opts.priority||'Pronto',area=t?.area||opts.area||'',dateISO=taskDateToISO(t?.when||opts.date||'');
- document.getElementById('modal').innerHTML=`<div class="modal"><div class="sheet"><h2>${editing?'Editar tarea':'Nueva tarea'}</h2><label>Título</label><textarea id="taskText" rows="3" maxlength="400">${esc(t?.title||opts.title||prefill||'')}</textarea><label>Fecha</label><input type="date" id="taskDate" value="${esc(dateISO)}"><label>Urgencia</label><select id="taskPriority">${['Urgente','Pronto','Cuando pueda'].map(v=>`<option ${priority===v?'selected':''}>${v}</option>`).join('')}</select><label>${normPerson(currentPersonName())==='santi lopez'?'Área':'Parlamentario'}</label><select id="taskArea">${taskOwnerOptions(area)}</select><div class="actions"><button class="primary" id="saveTask">${editing?'Guardar cambios':'Añadir tarea'}</button><button id="cancelTask">Cancelar</button>${editing?'<button class="danger" id="deleteTask">Eliminar</button>':''}</div></div></div>`;
+ document.getElementById('modal').innerHTML=`<div class="modal"><div class="sheet"><h2>${editing?'Editar tarea':'Nueva tarea'}</h2><label>Título</label><textarea id="taskText" rows="3" maxlength="400">${esc(t?.title||opts.title||prefill||'')}</textarea><label>Fecha</label><input type="date" id="taskDate" value="${esc(dateISO)}"><label>Urgencia</label><select id="taskPriority">${['Urgente','Pronto','Cuando pueda'].map(v=>`<option ${priority===v?'selected':''}>${v}</option>`).join('')}</select><label>${normPerson(currentPersonName())==='santi lopez'?'Área':'Parlamentario'}</label><select id="taskArea">${taskOwnerOptions(area)}</select>${!editing&&opts.archiveLabel?`<label class="check-line"><input type="checkbox" id="taskArchiveSource" checked> ${esc(opts.archiveLabel)}</label>`:''}<div class="actions"><button class="primary" id="saveTask">${editing?'Guardar cambios':'Añadir tarea'}</button><button id="cancelTask">Cancelar</button>${editing?'<button class="danger" id="deleteTask">Eliminar</button>':''}</div></div></div>`;
  document.getElementById('cancelTask').onclick=()=>document.getElementById('modal').innerHTML='';
  document.getElementById('saveTask').onclick=async()=>{
   const title=document.getElementById('taskText').value.trim();if(!title)return;
   const data={title,priority:document.getElementById('taskPriority').value,area:document.getElementById('taskArea').value,when:isoToTaskDate(document.getElementById('taskDate').value)};
-  let item;if(editing){tasks=tasks.map(x=>String(x.id)===String(id)?{...x,...data}:x);item=tasks.find(x=>String(x.id)===String(id))}else{item={id:Date.now(),...data,done:false};tasks.push(item);if(opts.onCreated)opts.onCreated(item)}
+  let item;if(editing){tasks=tasks.map(x=>String(x.id)===String(id)?{...x,...data}:x);item=tasks.find(x=>String(x.id)===String(id))}else{item={id:Date.now(),...data,done:false};tasks.push(item);if(opts.onCreated)opts.onCreated(item,!!document.getElementById('taskArchiveSource')?.checked)}
   saveTasksLocal();document.getElementById('modal').innerHTML='';render();showToast('Guardando…',null,'info');
   const ok=await (editing?updateTaskRemote(item):persistTask(item));saveToast(ok,editing?'Tarea actualizada':'Tarea guardada en el Excel');
  };
@@ -1192,7 +1207,8 @@ function openBuzonTaskModal(x){
   date:x.fechaLimite||x.fechaAsunto||'',
   priority:buzonTaskPriority(x),
   area:sourceTaskArea(buzonTaskTitle(x),[x.asunto,x.resumen,x.relacionado].filter(Boolean).join(' '),''),
-  onCreated:()=>markBuzonTaskAdded(x.id)
+  archiveLabel:'Quitar del Buzón al añadir',
+  onCreated:(item,archive)=>{markBuzonTaskAdded(x.id);if(archive)setDismissal('buzon',x,true)}
  });
  setTimeout(()=>{const el=document.getElementById('taskText');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}},0);
 }
@@ -1385,13 +1401,11 @@ function bind(){
  });
 
 
- document.querySelectorAll('[data-quick-task]').forEach(b=>b.onclick=async()=>{
+ document.querySelectorAll('[data-quick-task]').forEach(b=>b.onclick=()=>{
   const title=String(b.dataset.taskTitle||'').trim();
   if(!title)return;
   if(tasks.some(t=>sourceTaskKey(t.title)===sourceTaskKey(title))){showToast('Esta tarea ya estaba añadida');return}
-  const item={id:Date.now(),title,area:String(b.dataset.taskArea||''),priority:String(b.dataset.taskPriority||'Pronto'),when:'Sin fecha',done:false};
-  tasks.push(item);saveTasksLocal();render();
-  showToast('Guardando…',null,'info');const ok=await persistTask(item);saveToast(ok,'Tarea añadida');
+  openTaskModal(null,'',{title,area:String(b.dataset.taskArea||''),priority:String(b.dataset.taskPriority||'Pronto'),onCreated:()=>markSourceTaskAdded(title)});
  });
 
 
