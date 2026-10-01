@@ -1089,6 +1089,11 @@ function bancoDatos(){
  const sections=groups.map(dep=>{const items=visible.filter(x=>x.departamento===dep);return `<section class="bd-section"><div class="bd-sectitle"><span class="bd-dot"></span><h3>${esc(dep)}</h3></div><div class="bd-grid">${items.map(x=>{const line=[x.explicacion].filter(Boolean).join('');const meta=[x.area,x.fecha].filter(Boolean).join(' · ');const source=x.fuente?`<div class="bd-fuente">✓ ${esc(x.fuente)}</div>`:'';const src=x.url?`<a class="initiative-link" href="${esc(x.url)}" target="_blank" rel="noopener">Ver fuente →</a>`:'';return `<div class="bd-card"><div class="bd-dato">${esc(x.dato)}</div>${line?`<div class="bd-exp">${esc(line)}</div>`:''}${meta?`<div class="bd-meta">${esc(meta)}</div>`:''}${source}${src}</div>`}).join('')}</div></section>`}).join('');
  return `<div class="pageintro"><h2>Banco de Datos</h2><p>Datos confirmados y verificados</p></div><div class="bd-toolbar"><input id="bdSearch" class="bd-search" placeholder="Buscar dato, tema o fuente…" value="${esc(bancoDatosSearch)}"><div class="pills" style="padding:0">${depPills}</div></div>${sections||'<div class="empty">No hay datos para mostrar con estos filtros.</div>'}`
 }
+// ---- Documentos del repositorio elegidos a mano ----
+// Se muestran a todos en el Panel general, en este orden (el primero arriba).
+// Para añadir uno: {titulo:'…', enlace:'https://…', fecha:'dd/mm/aaaa', descripcion:'…'}
+const REPO_DESTACADOS=[
+];
 // ---- Buscador del repositorio ----
 // El script de Google guarda en la pestaña Repositorio_indice la lista de documentos del
 // repositorio (se actualiza una vez al día); aquí se busca en esa lista, sin esperar a Drive.
@@ -1131,15 +1136,10 @@ function panelGeneral(){
  const baseAccess=(accessItems.length?accessItems:fallback).filter(a=>!/banco de im[aá]genes/i.test(String(a.title||''))&&!/(últim[oa]?\s+)?(guion|reuni[oó]n).*grupo|grupo\s*\/\s*no\s*grupo/i.test(String(a.title||'')));
  const accesos=[...baseAccess,{title:'Banco de imágenes',desc:'Archivo compartido de imágenes del grupo.',url:'https://hodei.legebiltzarra.eus/index.php/s/hFnkUZhwILvJVA9'}].map(a=>{const t=String(a.title||'');return {...a,icon:/banco de im[aá]genes/i.test(t)?'▧':/banco de datos/i.test(t)?'▦':/guion|reuni[oó]n/i.test(t)?'☰':'▣',go:/banco de datos/i.test(t)?'Banco de Datos':''}});
  const html=accesos.map(a=>a.go?`<button type="button" class="hubcard" data-go="${a.go}"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></button>`:(a.url?`<a class="hubcard" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></a>`:`<div class="hubcard"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div></div>`)).join('');
- // Últimos documentos subidos al repositorio (el índice ya viene ordenado del más nuevo al más antiguo).
- // Si el índice aún no existe, se usan los "nuevos documentos" de siempre.
- ensureRepoLoaded();
- // Con la columna "Creado" se muestran los últimos subidos; si no está, el índice viene
- // ordenado por última modificación y se usa ese orden.
- const fromRepo=repoItems.length>0;
- const docs=fromRepo?repoItems.slice(0,5).map(d=>({titulo:d.titulo,descripcion:d.carpeta,fecha:d.creado||d.fecha,enlace:d.enlace})):(newDocsItems||[]).slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,5);
- const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item"><b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">Abrir documento →</a>`:''}</div>`).join(''):`<div class="newdoc-empty">No hay documentos nuevos disponibles.</div>`;
- const docsDropdown=`<details class="newdocs"><summary>${fromRepo?'ÚLTIMOS DOCUMENTOS DEL REPOSITORIO':'NUEVOS DOCUMENTOS DISPONIBLES'} <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
+ // Documentos elegidos a mano (REPO_DESTACADOS).
+ const docs=REPO_DESTACADOS;
+ const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item"><b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">Abrir documento →</a>`:''}</div>`).join(''):`<div class="newdoc-empty">Todavía no hay documentos destacados.</div>`;
+ const docsDropdown=`<details class="newdocs"><summary>ÚLTIMOS DOCUMENTOS DEL REPOSITORIO <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
  const santiFolder=normPerson(currentPersonName())==='santi lopez'?`<a class="hubcard" href="https://drive.google.com/drive/folders/10mjx-n2F5KmkZOM26QmeLxxyZ10c4ciF" target="_blank" rel="noopener noreferrer"><div class="hubicon">📁</div><div class="hubtext"><b>Mi carpeta · Santi</b><span>Abrir directamente tu carpeta del Drive compartido GPV.</span></div><div class="hubarrow">›</div></a>`:'';
  return `<div class="pageintro"><h2>Panel general</h2><p>Herramientas y recursos comunes del Grupo Popular Vasco</p></div>${repoSearchBlock()}${docsDropdown}${santiFolder?`<div class="hubgrid" style="margin-bottom:10px">${santiFolder}</div>`:''}<div class="hubgrid">${html}</div>`
 }
