@@ -1091,8 +1091,10 @@ function bancoDatos(){
 }
 // ---- Documentos del repositorio elegidos a mano ----
 // Se muestran a todos en el Panel general, en este orden (el primero arriba).
-// Para añadir uno: {titulo:'…', enlace:'https://…', fecha:'dd/mm/aaaa', descripcion:'…'}
+// Para añadir uno: {titulo:'…', enlace:'https://…', fecha:'dd/mm/aaaa', descripcion:'…'} (carpeta:true si es una carpeta)
 const REPO_DESTACADOS=[
+ {titulo:'CMC Competencia Alokabide',enlace:'https://drive.google.com/drive/folders/1aUvZ-kynXZOAz1zihzGLKbN1QapIzR30',fecha:'01/10/2026',descripcion:'Carpeta · Drive compartido GPV / ANA',carpeta:true},
+ {titulo:'Evaluación de programas subvencionales',enlace:'https://drive.google.com/drive/folders/16WkkpsQcDCGFxNqmV8bH_7JFKzJRG_Nf',fecha:'30/09/2026',descripcion:'Carpeta · Drive compartido GPV / GENERAL',carpeta:true}
 ];
 // ---- Buscador del repositorio ----
 // El script de Google guarda en la pestaña Repositorio_indice la lista de documentos del
@@ -1138,7 +1140,7 @@ function panelGeneral(){
  const html=accesos.map(a=>a.go?`<button type="button" class="hubcard" data-go="${a.go}"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></button>`:(a.url?`<a class="hubcard" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></a>`:`<div class="hubcard"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div></div>`)).join('');
  // Documentos elegidos a mano (REPO_DESTACADOS).
  const docs=REPO_DESTACADOS;
- const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item"><b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">Abrir documento →</a>`:''}</div>`).join(''):`<div class="newdoc-empty">Todavía no hay documentos destacados.</div>`;
+ const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item"><b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">${d.carpeta?'Abrir carpeta →':'Abrir documento →'}</a>`:''}</div>`).join(''):`<div class="newdoc-empty">Todavía no hay documentos destacados.</div>`;
  const docsDropdown=`<details class="newdocs"><summary>ÚLTIMOS DOCUMENTOS DEL REPOSITORIO <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
  const santiFolder=normPerson(currentPersonName())==='santi lopez'?`<a class="hubcard" href="https://drive.google.com/drive/folders/10mjx-n2F5KmkZOM26QmeLxxyZ10c4ciF" target="_blank" rel="noopener noreferrer"><div class="hubicon">📁</div><div class="hubtext"><b>Mi carpeta · Santi</b><span>Abrir directamente tu carpeta del Drive compartido GPV.</span></div><div class="hubarrow">›</div></a>`:'';
  return `<div class="pageintro"><h2>Panel general</h2><p>Herramientas y recursos comunes del Grupo Popular Vasco</p></div>${repoSearchBlock()}${docsDropdown}${santiFolder?`<div class="hubgrid" style="margin-bottom:10px">${santiFolder}</div>`:''}<div class="hubgrid">${html}</div>`
