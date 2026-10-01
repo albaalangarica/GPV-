@@ -922,11 +922,59 @@ function agendaTitleParts(x){
  }
  return {title:organ,detail:detail&&normPerson(detail)!==normPerson(organ)?detail:''};
 }
+// ---- Añadir a mi calendario ----
+// Genera la cita para el calendario del móvil (.ics, con aviso 1 hora antes) o para Google Calendar.
+const calendarItems=new Map();
+function calendarKey(ev){return stableItemId('cal',[ev.date,ev.time,ev.title,ev.location])}
+function registerCalendarItem(ev){if(!/^\d{4}-\d{2}-\d{2}$/.test(ev.date||''))return '';const k=calendarKey(ev);calendarItems.set(k,ev);return k}
+function calendarButtonHTML(ev,label='📅 Añadir a mi calendario'){const k=registerCalendarItem(ev);return k?`<button type="button" class="linkbtn cal-btn" data-cal="${esc(k)}" style="padding:4px 0 0;font-size:10.5px;display:block">${label}</button>`:''}
+function calendarTime(t){const m=String(t||'').match(/(\d{1,2})[:.h](\d{2})/);return m?{h:Number(m[1]),m:Number(m[2])}:null}
+function agendaCalendarEvent(x){const parts=agendaTitleParts(x);const links=[agendaOrderLink(x),x.group_zoom,/^https?:\/\//i.test(x.expediente_link||'')?x.expediente_link:''].filter(Boolean);return {title:parts.title,date:x.event_date,time:x.event_time,location:x.location||'',details:[parts.detail,...links].filter(Boolean).join('\n')}}
+function buzonCalendarEvent(x){const links=[x.enlaceCorreo,x.enlaceDocumento].filter(v=>/^https?:\/\//i.test(v||''));return {title:x.asunto||'Cita',date:sheetDateToISO(x.fechaAsunto),time:x.hora,location:x.lugar||'',details:[x.resumen,x.accion?'Acción: '+x.accion:'',...links].filter(Boolean).join('\n')}}
+function calPad(n){return String(n).padStart(2,'0')}
+function calStamp(date,h,m){return date.replace(/-/g,'')+'T'+calPad(h)+calPad(m)+'00'}
+function calRange(ev){
+ const t=calendarTime(ev.time);
+ if(!t){const d=new Date(ev.date+'T12:00:00');d.setDate(d.getDate()+1);const next=d.toISOString().slice(0,10).replace(/-/g,'');return {allDay:true,start:ev.date.replace(/-/g,''),end:next}}
+ const end=new Date(ev.date+'T00:00:00');end.setHours(t.h+1,t.m,0,0);
+ const endISO=`${end.getFullYear()}-${calPad(end.getMonth()+1)}-${calPad(end.getDate())}`;
+ return {allDay:false,start:calStamp(ev.date,t.h,t.m),end:calStamp(endISO,end.getHours(),end.getMinutes())};
+}
+function icsEscape(v){return String(v||'').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/([,;])/g,'\\$1')}
+function buildIcs(ev){
+ const r=calRange(ev),now=new Date(),stamp=now.toISOString().replace(/[-:]/g,'').replace(/\.\d+Z$/,'Z');
+ const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GPV//Dashboard//ES','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+  'UID:'+calendarKey(ev)+'@gpv','DTSTAMP:'+stamp,
+  r.allDay?'DTSTART;VALUE=DATE:'+r.start:'DTSTART:'+r.start,
+  r.allDay?'DTEND;VALUE=DATE:'+r.end:'DTEND:'+r.end,
+  'SUMMARY:'+icsEscape(ev.title)];
+ if(ev.location)lines.push('LOCATION:'+icsEscape(ev.location));
+ if(ev.details)lines.push('DESCRIPTION:'+icsEscape(ev.details));
+ // Aviso 1 hora antes; si es de todo el día, a las 9:00 de ese día.
+ lines.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEscape(ev.title),r.allDay?'TRIGGER:PT9H':'TRIGGER:-PT1H','END:VALARM','END:VEVENT','END:VCALENDAR');
+ return lines.join('\r\n');
+}
+function googleCalendarUrl(ev){const r=calRange(ev);const p=new URLSearchParams({action:'TEMPLATE',text:ev.title,dates:r.start+'/'+r.end,details:ev.details||'',location:ev.location||''});if(!r.allDay)p.set('ctz','Europe/Madrid');return 'https://calendar.google.com/calendar/render?'+p.toString()}
+function downloadIcs(ev){
+ const ics=buildIcs(ev),name=(ev.title||'cita').replace(/[^\wáéíóúñü -]+/gi,'').trim().slice(0,40)||'cita';
+ const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ if(isIOS){window.location.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);return}
+ const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'}));
+ const a=document.createElement('a');a.href=url;a.download=name+'.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+function openCalendarModal(ev){
+ const r=calRange(ev);const when=fmtDate(ev.date)+(r.allDay?' · todo el día':' · '+String(ev.time).trim());
+ document.getElementById('modal').innerHTML=`<div class="modal"><div class="sheet"><h2>Añadir a mi calendario</h2><p class="meta" style="margin-bottom:6px"><b>${esc(ev.title)}</b><br>${esc(when)}${ev.location?' · '+esc(ev.location):''}</p><p class="meta" style="margin-bottom:10px">Con aviso ${r.allDay?'a las 9:00 de ese día':'1 hora antes'}.</p><div class="actions" style="flex-wrap:wrap"><button class="primary" id="calIcs">Calendario del móvil</button><button id="calGoogle">Google Calendar</button><button id="calCancel">Cancelar</button></div></div></div>`;
+ const close=()=>document.getElementById('modal').innerHTML='';
+ document.getElementById('calCancel').onclick=close;
+ document.getElementById('calIcs').onclick=()=>{downloadIcs(ev);close()};
+ document.getElementById('calGoogle').onclick=()=>{window.open(googleCalendarUrl(ev),'_blank','noopener');close()};
+}
 function agendaRows(full=false,showAll=false,excludeToday=false){let items=visibleAgendaItems().filter(x=>(showAll||isAdmin()||isOwnAgenda(x))&&agendaFilters.has(category(x)));if(full){items=items.filter(x=>x.event_date>=todayISO())}else{const hoy=todayISO(),limite=plusDaysISO(hoy,7);items=items.filter(x=>(x.type||'').toLowerCase()!=='vencimiento'&&x.event_date>=(excludeToday?plusDaysISO(hoy,1):hoy)&&x.event_date<=limite)}items.sort((a,b)=>(a.event_date+a.event_time).localeCompare(b.event_date+b.event_time));return items.length?items.map(x=>{const tag=agendaEntryTag(x);const link=agendaOrderLink(x);const orden=agendaOrderHTML(x);const zoom=x.group_zoom?`<a class="orderlink" href="${esc(x.group_zoom)}" target="_blank" rel="noopener">Entrar por Zoom →</a>`:'';const parts=agendaTitleParts(x),title=parts.title;const detail=parts.detail?`<div class="agenda-detail">${esc(parts.detail)}</div>`:'';const place=x.location?`<div class="agenda-place">${esc(x.location)}</div>`:'';return `<div class="row agenda-entry"><div class="date">${fmtDate(x.event_date)}
-${esc(x.event_time||'')}</div><div><span class="agenda-type-tag ${tag.cls}">${tag.label}</span><b>${esc(title)}</b>${detail}${place}${orden}${zoom}${agendaManualLinkHTML(x)}${agendaManageHTML(x)}</div></div>`}).join(''):`<div class="empty">${full||showAll?'No hay citas en las categorías seleccionadas.':'Sin citas tuyas en las categorías seleccionadas.'}</div>`}
+${esc(x.event_time||'')}</div><div><span class="agenda-type-tag ${tag.cls}">${tag.label}</span><b>${esc(title)}</b>${detail}${place}${orden}${zoom}${agendaManualLinkHTML(x)}${calendarButtonHTML(agendaCalendarEvent(x))}${agendaManageHTML(x)}</div></div>`}).join(''):`<div class="empty">${full||showAll?'No hay citas en las categorías seleccionadas.':'Sin citas tuyas en las categorías seleccionadas.'}</div>`}
 function agendaManualLinkHTML(x){if(isPlenoComisionAgenda(x))return '';const link=String(x.expediente_link||'').trim();return /^https?:\/\//i.test(link)?`<a class="orderlink" href="${esc(link)}" target="_blank" rel="noopener">Ver enlace →</a>`:''}
 function agendaManageHTML(x){if(!canManageAgendaEvents()||!x.id_evento)return '';return `<button type="button" class="linkbtn" data-edit-evento="${esc(x.id_evento)}" style="padding:4px 0 0;font-size:10.5px">✎ Editar / cancelar</button>`}
-function todayAgendaItemHTML(x){const tag=agendaEntryTag(x),parts=agendaTitleParts(x),title=parts.title,detail=parts.detail?`<div class="agenda-detail">${esc(parts.detail)}</div>`:'',place=x.location?`<div class="agenda-place">${esc(x.location)}</div>`:'',zoom=x.group_zoom?`<a class="orderlink" href="${esc(x.group_zoom)}" target="_blank" rel="noopener">Entrar por Zoom →</a>`:'';return `<div class="row agenda-entry"><div class="date">${esc(x.event_time||'')}</div><div><span class="agenda-type-tag ${tag.cls}">${tag.label}</span><b>${esc(title)}</b>${detail}${place}${agendaOrderHTML(x)}${zoom}${agendaManualLinkHTML(x)}${agendaManageHTML(x)}</div></div>`}
+function todayAgendaItemHTML(x){const tag=agendaEntryTag(x),parts=agendaTitleParts(x),title=parts.title,detail=parts.detail?`<div class="agenda-detail">${esc(parts.detail)}</div>`:'',place=x.location?`<div class="agenda-place">${esc(x.location)}</div>`:'',zoom=x.group_zoom?`<a class="orderlink" href="${esc(x.group_zoom)}" target="_blank" rel="noopener">Entrar por Zoom →</a>`:'';return `<div class="row agenda-entry"><div class="date">${esc(x.event_time||'')}</div><div><span class="agenda-type-tag ${tag.cls}">${tag.label}</span><b>${esc(title)}</b>${detail}${place}${agendaOrderHTML(x)}${zoom}${agendaManualLinkHTML(x)}${calendarButtonHTML(agendaCalendarEvent(x))}${agendaManageHTML(x)}</div></div>`}
 function todayAgendaBody(items,emptyText){const main=items.filter(x=>category(x)!=='Otros'),otros=items.filter(x=>category(x)==='Otros');const visible=main.map(todayAgendaItemHTML).join('');const folded=otros.length?`<details class="today-otros"><summary>OTROS (${otros.length})</summary>${otros.map(todayAgendaItemHTML).join('')}</details>`:'';return visible+folded||`<div class="empty">${emptyText}</div>`}
 function todayAgenda(showAll=false){const hoy=todayISO();let items=visibleAgendaItems().filter(x=>x.event_date===hoy&&(showAll||isAdmin()||isOwnAgenda(x)));items.sort((a,b)=>(a.event_time||'').localeCompare(b.event_time||''));const body=todayAgendaBody(items,showAll||isAdmin()?'No hay asuntos en la agenda de hoy.':'No tienes citas hoy.');return card('HOY',fmtDate(hoy),body).replace('class="card"','class="card agenda-card"')}
 function agenda(full=false,showAll=false){const labels=[['Plenos y Comisiones','Plenos y Comisiones'],['Grupo','Grupo'],['Mesa y Junta','Mesa y Junta'],['Otros','Otros']];const pills=labels.map(([x,l])=>`<button type="button" class="pill ${agendaFilters.has(x)?'active':''}" data-agenda-filter="${x}">${l}</button>`).join('');let rows=agendaRows(full,showAll,!full);const more=full?'':`<div class="extlinks"><button class="linkbtn" data-go="Agenda">→ Acceso a toda la agenda</button></div>`;const nuevo=canManageAgendaEvents()?`<div class="extlinks" style="border-top:0;padding-bottom:0"><button type="button" class="linkbtn" id="btnNuevoEvento">＋ Crear evento</button></div>`:'';return card('AGENDA',full?'Agenda parlamentaria completa':'Próximas citas',`${nuevo}<div class="pills">${pills}</div>${rows}${!full&&!showAll?vencimientos():''}${more}`).replace('class="card"','class="card agenda-card"') }
@@ -1261,7 +1309,7 @@ function buzon(){
    /^https?:\/\//i.test(x.enlaceDocumento)?`<a class="initiative-link" href="${esc(x.enlaceDocumento)}" target="_blank" rel="noopener">Ver documento →</a>`:''
   ].filter(Boolean).join(' ');
   const addAgenda=(normPerson(currentPersonName())==='santi lopez'&&x.fechaAsunto)?(buzonItemInAgenda(x)?`<button disabled>✓ En tu agenda</button>`:`<button data-buzon-agenda="${esc(x.id)}">＋ Añadir a agenda</button>`):'';
-  return `<div class="initiative"><div class="initiative-top"><h4>${esc(x.asunto)}</h4>${priority}</div>${x.resumen?`<div class="meta" style="margin-top:7px">${esc(x.resumen)}</div>`:''}${x.accion?`<div class="initiative-note"><b>Acción necesaria:</b> ${esc(x.accion)}</div>`:''}<div class="initiative-meta">${meta}</div>${x.relacionado?`<div class="meta"><b>Relacionado con:</b> ${esc(x.relacionado)}</div>`:''}${x.lugar?`<div class="meta"><b>Lugar:</b> ${esc(x.lugar)}</div>`:''}${x.observaciones?`<div class="meta">${esc(x.observaciones)}</div>`:''}${links}<div class="radar-actions">${buzonTaskButton(x)}${addAgenda}<button data-buzon-dismiss="${esc(x.id)}">✓ Descartar</button></div></div>`
+  return `<div class="initiative"><div class="initiative-top"><h4>${esc(x.asunto)}</h4>${priority}</div>${x.resumen?`<div class="meta" style="margin-top:7px">${esc(x.resumen)}</div>`:''}${x.accion?`<div class="initiative-note"><b>Acción necesaria:</b> ${esc(x.accion)}</div>`:''}<div class="initiative-meta">${meta}</div>${x.relacionado?`<div class="meta"><b>Relacionado con:</b> ${esc(x.relacionado)}</div>`:''}${x.lugar?`<div class="meta"><b>Lugar:</b> ${esc(x.lugar)}</div>`:''}${x.observaciones?`<div class="meta">${esc(x.observaciones)}</div>`:''}${links}<div class="radar-actions">${buzonTaskButton(x)}${addAgenda}${/^\d{4}-\d{2}-\d{2}$/.test(sheetDateToISO(x.fechaAsunto))?`<button type="button" data-cal-buzon="${esc(x.id)}">📅 A mi calendario</button>`:''}<button data-buzon-dismiss="${esc(x.id)}">✓ Descartar</button></div></div>`
  }).join(''):'<div class="empty">No hay asuntos en el buzón todavía.</div>';
  const notif='';
  const clearAll=items.length?`<div class="extlinks" style="border-top:0;padding:6px 0 0"><button type="button" class="linkbtn" id="buzonClearAll">🗑 Borrar todo el buzón</button></div>`:'';
@@ -1411,6 +1459,10 @@ function bind(){
    await setDismissal('buzon',item,false);render();showToast('Entrada restaurada');
   });
  });
+
+
+ document.querySelectorAll('[data-cal]').forEach(b=>b.onclick=()=>{const ev=calendarItems.get(b.dataset.cal);if(ev)openCalendarModal(ev)});
+ document.querySelectorAll('[data-cal-buzon]').forEach(b=>b.onclick=()=>{const item=sourceItemById('buzon',b.dataset.calBuzon);if(item)openCalendarModal(buzonCalendarEvent(item))});
 
 
  document.querySelectorAll('[data-buzon-task]').forEach(b=>b.onclick=()=>{
