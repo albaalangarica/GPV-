@@ -443,7 +443,7 @@ function cancelarEvento(data) {
 
 // Carpeta raíz del Repositorio GPV en Drive. La app busca por título en la pestaña
 // Repositorio_indice, que se rellena recorriendo esta carpeta y todas sus subcarpetas.
-const REPOSITORIO_FOLDER_ID = '16WkkpsQcDCGFxNqmV8bH_7JFKzJRG_Nf';
+const REPOSITORIO_FOLDER_ID = '1mmgAD6Qx-FnXC97IVSB6D9kOkMikt43j';
 const SHEET_REPOSITORIO = 'Repositorio_indice';
 
 // Ejecutar UNA VEZ a mano desde el editor: pide permiso de Drive, crea el índice
@@ -526,6 +526,7 @@ function doGet(e) {
       const result = { ok: true, descartes: listarDescartes(params.usuario) };
       return params.callback ? jsonpResponse(params.callback, result) : jsonResponse(result);
     }
+    if (params.action === 'ics') return icsResponse(params.ics);
     if (params.action === 'listar_tareas') {
       const result = { ok: true, tareas: listarTareas(params.usuario) };
       return params.callback ? jsonpResponse(params.callback, result) : jsonResponse(result);
@@ -536,6 +537,16 @@ function doGet(e) {
     const result = { ok: false, error: error.message, descartes: [], tareas: [] };
     return params.callback ? jsonpResponse(params.callback, result) : jsonResponse(result);
   }
+}
+
+// "Añadir a mi calendario" en iPhone: Safari solo abre el calendario si la cita llega desde una
+// dirección web con tipo text/calendar, así que la app manda aquí la cita ya preparada.
+function icsResponse(ics) {
+  const texto = String(ics || '');
+  if (texto.indexOf('BEGIN:VCALENDAR') !== 0 || texto.length > 6000) {
+    return ContentService.createTextOutput('Cita no válida').setMimeType(ContentService.MimeType.TEXT);
+  }
+  return ContentService.createTextOutput(texto).setMimeType(ContentService.MimeType.ICAL);
 }
 
 function jsonResponse(obj) {

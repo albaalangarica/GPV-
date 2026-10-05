@@ -958,7 +958,8 @@ function googleCalendarUrl(ev){const r=calRange(ev);const p=new URLSearchParams(
 function downloadIcs(ev){
  const ics=buildIcs(ev),name=(ev.title||'cita').replace(/[^\wáéíóúñü -]+/gi,'').trim().slice(0,40)||'cita';
  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
- if(isIOS){window.location.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);return}
+ // En iPhone, Safari bloquea abrir la cita desde la propia página: la sirve el script de Google.
+ if(isIOS){window.location.href=TASKS_API_URL+'?'+new URLSearchParams({action:'ics',ics}).toString();return}
  const url=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'}));
  const a=document.createElement('a');a.href=url;a.download=name+'.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
