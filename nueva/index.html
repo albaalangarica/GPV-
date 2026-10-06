@@ -116,6 +116,31 @@ button{font-family:inherit}
 .ni-tag.warning,.ni-tag.agenda-tag-comision{background:var(--warning-50);color:var(--warning)}
 .ni-tag.danger,.ni-tag.agenda-tag-pleno{background:var(--danger-50);color:var(--danger)}
 .ni-tag.night{background:var(--night);color:#fff}
+/* Plenos: tarjeta destacada y enlace fijo al orden del día */
+.ni-event.pleno{position:relative;overflow:hidden;background:var(--night);border-color:var(--night);color:#fff;box-shadow:0 14px 34px -18px rgba(7,19,48,.75);padding:20px}
+.ni-event.pleno:before{content:'';position:absolute;right:-70px;top:-70px;width:200px;height:200px;border-radius:50%;background:rgba(30,91,255,.35);filter:blur(40px);pointer-events:none}
+.ni-event.pleno>*{position:relative}
+.ni-grid.two>.ni-event.pleno{grid-column:1/-1}
+.ni-event.pleno .ni-date{background:var(--electric)}
+.ni-event.pleno .ni-date-m{color:#fff}
+.ni-event.pleno h3{color:#fff;font-size:19px}
+.ni-event.pleno .ni-event-detail,.ni-event.pleno .ni-meta{color:rgba(255,255,255,.72)}
+.ni-event.pleno .ni-tag{background:rgba(255,255,255,.12);color:#fff}
+.ni-event.pleno .ni-tag.star{background:var(--electric);color:#fff}
+.ni-event.pleno .ni-actions a,.ni-event.pleno .ni-actions .linkbtn,.ni-event.pleno .ni-actions .cal-btn{color:var(--sky)}
+.ni-event.pleno .ni-actions a.ni-orderbtn{color:var(--night);background:#fff;border-radius:999px;padding:9px 16px!important;font-size:13.5px!important}
+.ni-event.pleno .ni-actions a.ni-orderbtn:hover{background:var(--sky)}
+.ni-orderbtn small{font-weight:600;opacity:.6}
+.ni-ordertop{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:7px 12px;border-radius:999px;background:var(--electric);color:#fff;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+.ni-ordertop:hover{background:#3a70ff}
+.ni-ordertop .long{display:none}
+@media (min-width:860px){.ni-ordertop .long{display:inline}.ni-ordertop .short{display:none}}
+.ni-pleno{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin-top:16px;max-width:520px;padding:16px;border-radius:18px;background:var(--electric);color:#fff}
+.ni-pleno .txt{flex:1;min-width:200px}
+.ni-pleno small{display:block;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+.ni-pleno b{display:block;margin-top:3px;font-size:16px;line-height:1.3}
+.ni-pleno a{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;background:#fff;color:var(--night);font-size:13.5px;font-weight:700;text-decoration:none}
+
 .ni-empty{border:1px dashed var(--line-strong);border-radius:var(--radius-card);padding:26px 20px;text-align:center;color:var(--slate);background:rgba(255,255,255,.5)}
 .ni-empty b{display:block;color:var(--night);font-size:15px;margin-bottom:4px}
 .ni-daylabel{margin:22px 0 10px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--slate)}
@@ -318,6 +343,7 @@ button{font-family:inherit}
 .ni-login .back{display:inline-block;margin-top:22px;color:rgba(255,255,255,.6);font-size:13px}
 
 @media (max-width:520px){.ni-word span,.ni-avatar small{display:none}}
+@media (max-width:1320px){.ni-avatar small{display:none}}
 /* Navegación de escritorio en la cabecera (como NNGG) */
 .ni-topnav{display:none}
 @media (min-width:860px){
@@ -330,6 +356,7 @@ button{font-family:inherit}
  .ni-topnav button.active .ico{color:var(--sky)}
  .ni-topnav button.active:after{content:'';position:absolute;left:16px;right:16px;bottom:-13px;height:3px;border-radius:999px;background:var(--electric)}
  .ni-avatar{margin-left:8px}
+ .ni-ordertop{margin-left:10px}
  .ni-nav{display:none}
  .app{padding-bottom:24px}
  .toast{bottom:24px}
@@ -1720,6 +1747,7 @@ const NI_ICONS={
  search:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>',
  list:'<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.75" cy="6.5" r=".9"/><circle cx="4.75" cy="12" r=".9"/><circle cx="4.75" cy="17.5" r=".9"/>',
  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+ image:'<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m20.5 16-5-5-9 8.5"/>',
  inbox:'<path d="M3.5 13.5 6 5.5h12l2.5 8v5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5Z"/><path d="M3.5 13.5H9l1 2h4l1-2h5.5"/>',
  tasks:'<rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
  folder:'<path d="M3.5 7.5a2 2 0 0 1 2-2H10l2 2.5h6.5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/>',
@@ -1734,7 +1762,7 @@ const NI_MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov
 const NI_MESES_LARGOS=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const NI_DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 const NI_DIAS_LARGOS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-const NI_MAS_TABS=new Set(['Mas','Panel','Buzón','Tareas','Grupo','Pendientes','Banco de Datos','Orden','Adjudicaciones']);
+const NI_MAS_TABS=new Set(['Mas','Buzón','Tareas','Grupo','Pendientes','Banco de Datos','Orden','Adjudicaciones']);
 let agCats=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta']),agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
 let niTipo='Todos',niEstado='Todas',niPersona='Todos',niOrden='recientes',niLastTab='';
 
@@ -1751,15 +1779,16 @@ function niCount(n,uno,varios){return `${n} ${n===1?uno:varios}`}
 // ---- Estructura ----
 function niTopBar(){
  const ident=displayIdentity();
- return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><b>GPV</b><span>Grupo Popular Vasco</span></button><span class="ni-beta">Prueba</span>${niTopNav()}<button type="button" class="ni-avatar press" data-tab="Mas" aria-label="Más opciones"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></button></div></header>`;
+ return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><b>GPV</b><span>Grupo Popular Vasco</span></button><span class="ni-beta">Prueba</span>${niTopNav()}${niOrderTop()}<button type="button" class="ni-avatar press" data-tab="Mas" aria-label="Más opciones"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></button></div></header>`;
 }
 // En ordenador la navegación va en la cabecera (como NNGG); en móvil, en la barra inferior.
 function niTopNav(){
  const active=niActiveNav();
  return `<nav class="ni-topnav" aria-label="Principal"><ul>${niNavItems().map(([t,i,l])=>`<li><button type="button" data-tab="${t}" class="press ${active===t?'active':''}" ${active===t?'aria-current="page"':''}>${ico(i,18)}${l}</button></li>`).join('')}</ul></nav>`;
 }
-function niNavItems(){return [['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Radar','radar','Radar'],['Mas','grid','Más']]}
-function niActiveNav(){if(tab==='Agenda')return 'Inicio';if(NI_MAS_TABS.has(tab))return 'Mas';if(tab==='Solicitudes')return 'Iniciativas';return tab}
+// Radar y Agenda se abren desde Inicio (y Radar también desde Más); Panel general sí es pestaña.
+function niNavItems(){return [['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Panel','folder','Panel'],['Mas','grid','Más']]}
+function niActiveNav(){if(tab==='Agenda'||tab==='Radar')return 'Inicio';if(NI_MAS_TABS.has(tab))return 'Mas';if(tab==='Solicitudes')return 'Iniciativas';return tab}
 function niBottomNav(){
  const active=niActiveNav();
  return `<nav class="ni-nav" aria-label="Principal"><ul>${niNavItems().map(([t,i,l])=>`<li><button type="button" data-tab="${t}" class="press ${active===t?'active':''}" ${active===t?'aria-current="page"':''}><span class="ni-navpill">${ico(i,21)}</span><small>${l}</small></button></li>`).join('')}</ul></nav>`;
@@ -1775,7 +1804,7 @@ function renderView(){
  switch(tab){
   case 'Agenda':page=niAgenda();break;
   case 'Iniciativas':case 'Solicitudes':page=niIniciativas();break;
-  case 'Radar':page=niLegacy((isPrensa()||isEquipo())?equipoRadar():radar());break;
+  case 'Radar':page=niPageHeader('Radar','Radar.','Noticias, BOPV y avisos del Gobierno Vasco.','Inicio')+niLegacy(((isPrensa()||isEquipo())?equipoRadar():radar()).replace(/<div class="pageintro">[\s\S]*?<\/div>/,''));break;
   case 'Mas':page=niMas();break;
   case 'Panel':page=niLegacy(panelGeneral());break;
   case 'Buzón':page=niLegacy(buzonUnlocked?buzon():'<div class="soon"><h2>Buzón bloqueado</h2><p>Introduce la contraseña desde Más → Buzón.</p></div>');break;
@@ -1792,19 +1821,30 @@ function renderView(){
  if(niLastTab!==tab){niLastTab=tab;window.scrollTo(0,0)}
 }
 
+// ---- Plenos ----
+// Los plenos van destacados y siempre llevan enlace al orden del día. Si el Parlamento
+// aún no lo ha publicado, el enlace lleva a su agenda.
+const NI_PARLAMENTO_AGENDA='https://www.legebiltzarra.eus/portal/es/inicio';
+function niIsPleno(x){const t=normPerson(x.type||''),o=normPerson(x.organ_activity||'');return /(^|\s)pleno/.test(t)||/(^|\s)pleno/.test(o)}
+function niOrderLink(x){return agendaOrderLink(x)||(niIsPleno(x)?NI_PARLAMENTO_AGENDA:'')}
+function niNextPleno(){const hoy=todayISO();return visibleAgendaItems().filter(x=>x.event_date>=hoy&&niIsPleno(x)).sort(niByDate)[0]||null}
+function niPlenoWhen(x){return niRelDay(x.event_date)+(x.event_time&&/^\d/.test(x.event_time)?' · '+x.event_time:'')}
+function niOrderTop(){const p=niNextPleno();if(!p)return '';return `<a class="ni-ordertop press" href="${esc(niOrderLink(p))}" target="_blank" rel="noopener" title="Orden del día del pleno · ${esc(niPlenoWhen(p))}">${ico('document',15)}<span class="short">Orden del día</span><span class="long">Orden del día · Pleno ${esc(niRelDay(p.event_date).toLowerCase())}</span></a>`}
+function niPlenoBanner(){const p=niNextPleno();if(!p)return '';const real=!!agendaOrderLink(p);return `<div class="ni-pleno"><span class="txt"><small>Próximo pleno · ${esc(niPlenoWhen(p))}</small><b>${esc(agendaTitleParts(p).title)}</b></span><a href="${esc(niOrderLink(p))}" target="_blank" rel="noopener">${ico('document',16)}${real?'Orden del día':'Orden del día (Parlamento)'}</a></div>`}
+
 // ---- Tarjetas ----
 function niDateBlock(iso,tone=''){const d=niDate(iso);return `<div class="ni-date ${tone}"><span class="ni-date-m">${NI_MESES[d.getMonth()]}</span><span class="ni-date-d">${d.getDate()}</span><span class="ni-date-w">${NI_DIAS[d.getDay()]}</span></div>`}
 function niAgendaCard(x){
- const tag=agendaEntryTag(x),parts=agendaTitleParts(x),order=agendaOrderLink(x);
+ const tag=agendaEntryTag(x),parts=agendaTitleParts(x),pleno=niIsPleno(x),order=pleno?niOrderLink(x):agendaOrderLink(x);
  const links=[
-  order?`<a href="${esc(order)}" target="_blank" rel="noopener">${ico('document',15)}Orden del día</a>`:'',
+  order?`<a ${pleno?'class="ni-orderbtn" ':''}href="${esc(order)}" target="_blank" rel="noopener">${ico('document',15)}Orden del día${pleno&&!agendaOrderLink(x)?' <small>· aún sin publicar</small>':''}</a>`:'',
   x.group_zoom?`<a href="${esc(x.group_zoom)}" target="_blank" rel="noopener">${ico('users',15)}Entrar por Zoom</a>`:'',
   agendaManualLinkHTML(x).replace('Ver enlace →','Ver enlace'),
   calendarButtonHTML(agendaCalendarEvent(x),'📅 A mi calendario'),
   agendaManageHTML(x)
  ].filter(Boolean).join('');
  const time=x.event_time&&!/todo el d/i.test(x.event_time)?x.event_time:'';
- return `<article class="ni-card ni-event ${niIsPastToday(x)?'past':''}">${niDateBlock(x.event_date,x.event_date===todayISO()?'electric':'')}<div class="ni-event-body"><div class="ni-tags"><span class="ni-tag ${tag.cls}">${esc(tag.label)}</span></div><h3>${esc(parts.title)}</h3>${parts.detail?`<p class="ni-event-detail">${esc(parts.detail)}</p>`:''}<div class="ni-meta">${time?`<span>${ico('clock',15)}${esc(time)}</span>`:''}${x.location?`<span>${ico('pin',15)}${esc(x.location)}</span>`:''}</div>${links?`<div class="ni-actions">${links}</div>`:''}</div></article>`;
+ return `<article class="ni-card ni-event ${pleno?'pleno':niIsPastToday(x)?'past':''}">${niDateBlock(x.event_date,x.event_date===todayISO()?'electric':'')}<div class="ni-event-body"><div class="ni-tags">${pleno?`<span class="ni-tag star">${ico('star',12)}Pleno</span>`:`<span class="ni-tag ${tag.cls}">${esc(tag.label)}</span>`}</div><h3>${esc(parts.title)}</h3>${parts.detail?`<p class="ni-event-detail">${esc(parts.detail)}</p>`:''}<div class="ni-meta">${time?`<span>${ico('clock',15)}${esc(time)}</span>`:''}${x.location?`<span>${ico('pin',15)}${esc(x.location)}</span>`:''}</div>${links?`<div class="ni-actions">${links}</div>`:''}</div></article>`;
 }
 function niEmpty(title,text){return `<div class="ni-empty"><b>${esc(title)}</b>${esc(text||'')}</div>`}
 
@@ -1840,21 +1880,19 @@ function niHome(){
   deadlines.length?`<a href="#ni-vencimientos">${ico('alert',16)}Vencimientos <span class="count">${deadlines.length}</span></a>`:'',
   taskUserEnabled()?`<button type="button" data-go="Tareas">${ico('tasks',16)}Tareas${openTasks.length?` <span class="count">${openTasks.length}</span>`:''}</button>`:'',
   inbox!==null?`<button type="button" data-tab="Buzón">${ico('inbox',16)}Buzón${inbox?` <span class="count">${inbox}</span>`:''}</button>`:'',
+  `<button type="button" data-tab="Radar">${ico('radar',16)}Radar</button>`,
   `<button type="button" data-tab="Iniciativas">${ico('document',16)}Iniciativas</button>`
  ].filter(Boolean).join('');
- const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1>${nextCard}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
+ const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1>${niPlenoBanner()}${nextCard}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
 
  const todaySec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`)}${today.length?`<div class="ni-grid two">${today.map(niAgendaCard).join('')}</div>`:niEmpty('Nada en la agenda de hoy','Consulta lo que viene esta semana.')}</div></section>`;
  const weekSec=`<section class="ni-section"><div class="wrap">${niSectionHead('Próximos días',week.length?`${niCount(week.length,'cita','citas')} esta semana`:'Semana tranquila',`<button type="button" class="ni-link" data-tab="Agenda">Ver todo ${ico('arrowRight',16)}</button>`)}${week.length?`<div class="ni-grid two">${week.slice(0,6).map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas en los próximos 7 días','')}<div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
  const dlSec=deadlines.length?`<section class="ni-section" id="ni-vencimientos"><div class="wrap">${niSectionHead('Vencimientos','Plazos de esta semana')}<div class="ni-grid two">${deadlines.slice(0,8).map(x=>{const who=String(x.detail||'').split(':')[0];return `<article class="ni-card ni-event">${niDateBlock(x.event_date,'danger')}<div class="ni-event-body"><div class="ni-tags"><span class="ni-tag danger">${esc(x.organ_activity||'Plazo')}</span></div><h3>${esc(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</h3>${niSeesAll()&&who?`<div class="ni-meta"><span>${ico('user',15)}${esc(who)}</span></div>`:''}${initiativeLinkHTMLByTitle(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</div></article>`}).join('')}</div></div></section>`:'';
 
- const d=niInitiativeData(),pend=d.filter(x=>x.estado==='Pendiente').length,resp=d.filter(x=>x.estado==='Contestada').length,asg=d.filter(x=>x.estado==='Asignada').length;
- const initSec=`<section class="ni-section dark"><div class="wrap">${niSectionHead(niSeesAll()?'Iniciativas · todo el grupo':'Tus iniciativas','Cómo va lo que hemos registrado.',`<button type="button" class="ni-link" data-tab="Iniciativas">Ver todas ${ico('arrowRight',16)}</button>`)}<div class="ni-stats"><button type="button" class="ni-stat warn press" data-ni-go="Pendientes"><b>${pend}</b><span>Pendientes</span></button><button type="button" class="ni-stat ok press" data-ni-go="Contestadas"><b>${resp}</b><span>Contestadas</span></button><button type="button" class="ni-stat press" data-ni-go="Asignadas"><b>${asg}</b><span>Asignadas</span></button></div></div></section>`;
-
  const taskSec=taskUserEnabled()?`<section class="ni-section"><div class="wrap">${homeTasks()}</div></section>`:'';
  const radarSec=(!isPrensa()&&!isEquipo())?radarHome():'';
- const radarWrap=radarSec?`<section class="ni-section"><div class="wrap">${radarSec}</div></section>`:'';
- return hero+todaySec+dlSec+weekSec+initSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+ const radarWrap=(!isPrensa()&&!isEquipo())?`<section class="ni-section"><div class="wrap">${niSectionHead('Radar',radarSec?'Lo de hoy':'Nada nuevo hoy',`<button type="button" class="ni-link" data-tab="Radar">Todo el radar ${ico('arrowRight',16)}</button>`)}${radarSec}</div></section>`:'';
+ return hero+todaySec+dlSec+weekSec+taskSec+radarWrap+'<div style="height:12px"></div>';
 }
 
 // ---- Agenda ----
@@ -1893,7 +1931,7 @@ function niAgenda(){
   const groups=[];for(const x of future){const g=groups[groups.length-1];if(g&&g.day===x.event_date)g.items.push(x);else groups.push({day:x.event_date,items:[x]})}
   body=(groups.length?groups.map(g=>`<p class="ni-daylabel ${g.day===hoy?'today':''}">${esc(niRelDay(g.day))}${g.day!==hoy&&g.day!==plusDaysISO(hoy,1)?'':' · '+esc(niLongDate(g.day))}</p><div class="ni-grid two">${g.items.map(niAgendaCard).join('')}</div>`).join(''):`<div style="margin-top:16px">${niEmpty(`No hay citas en los próximos ${agDias} días`,'Cambia los filtros o mira la vista de mes.')}</div>`)+(more?`<div style="margin-top:18px;text-align:center"><button type="button" class="ni-btn ghost" data-ag-mas>Ver más · ${niCount(more,'cita más','citas más')}</button></div>`:'');
  }
- return niPageHeader('Agenda','Lo que viene.',agScope==='mias'?'Tus citas y las del grupo que te afectan.':'Toda la agenda parlamentaria del grupo.','Inicio')+`<div class="wrap"><div class="ni-filters"><div class="ni-chips">${chips}</div><div class="ni-row">${scope}${vista}${nuevo}</div></div>${body}</div><div style="height:16px"></div>`;
+ return niPageHeader('Agenda','Lo que viene.',agScope==='mias'?'Tus citas y las del grupo que te afectan.':'Toda la agenda parlamentaria del grupo.','Inicio')+`<div class="wrap">${niPlenoBanner()}<div class="ni-filters"><div class="ni-chips">${chips}</div><div class="ni-row">${scope}${vista}${nuevo}</div></div>${body}</div><div style="height:16px"></div>`;
 }
 
 // ---- Iniciativas ----
@@ -1949,14 +1987,15 @@ function niMas(){
  const ident=displayIdentity(),inbox=niInboxCount();
  const item=(attr,icon,title,sub,cls='')=>`<button type="button" class="ni-hubitem press ${cls}" ${attr}><span class="tile">${ico(icon,22)}</span><span class="txt"><b>${title}</b><small>${sub}</small></span>${ico('chevronRight',20,'chev')}</button>`;
  const items=[
-  item('data-tab="Panel"','folder','Panel general','Repositorio, documentos y accesos del grupo'),
+  item('data-tab="Radar"','radar','Radar','Noticias, BOPV y avisos del Gobierno Vasco'),
   inbox!==null?item('data-tab="Buzón"','inbox',`Buzón${inbox?` · ${inbox}`:''}`,'Correos y convocatorias que te afectan'):'',
   taskUserEnabled()?item('data-go="Tareas"','tasks','Tareas','Tus pendientes con fecha y urgencia'):'',
   hasGroupView()?item('data-tab="Grupo"','users','Panel del grupo','Seguimiento de todo el grupo'):'',
   hasPendientesView()?item('data-tab="Pendientes"','list','Pendientes','Asuntos pendientes y asignaciones'):'',
   isPrensa()?item('data-tab="Orden"','calendar','Orden del día','Asuntos de hoy de todo el grupo'):'',
   isEquipo()?item('data-tab="Adjudicaciones"','tasks','Adjudicaciones y plazos','PNL, mociones y vencimientos'):'',
-  item('data-go="Banco de Datos"','chart','Banco de datos','Datos verificados con su fuente')
+  item('data-go="Banco de Datos"','chart','Banco de datos','Datos verificados con su fuente'),
+  `<a class="ni-hubitem press" href="https://hodei.legebiltzarra.eus/index.php/s/hFnkUZhwILvJVA9" target="_blank" rel="noopener"><span class="tile">${ico('image',22)}</span><span class="txt"><b>Banco de imágenes</b><small>Archivo compartido de imágenes del grupo</small></span>${ico('chevronRight',20,'chev')}</a>`
  ].filter(Boolean).join('');
  return niPageHeader('Más',esc(ident.name||'Mi cuenta'),esc(ident.role||''))+`<div class="wrap" style="padding-top:18px"><div class="ni-hub">${items}</div><div class="ni-hub" style="margin-top:18px"><a class="ni-hubitem press" href="../"><span class="tile">${ico('arrowRight',22)}</span><span class="txt"><b>Volver a la versión actual</b><small>Esta es la versión de prueba del nuevo diseño</small></span></a><button type="button" class="ni-hubitem press danger" id="logout"><span class="tile">${ico('logout',22)}</span><span class="txt"><b>Salir</b><small>Cambiar de usuario</small></span></button></div></div><div style="height:16px"></div>`;
 }
