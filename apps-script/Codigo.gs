@@ -43,9 +43,9 @@ function doPost(e) {
     if (data.action === 'eliminar_tarea') return eliminarTarea(data);
     if (data.action === 'descartar_item') return guardarDescarte(data);
     if (data.action === 'restaurar_descarte') return restaurarDescarte(data);
-    if (data.action === 'crear_evento') return crearEvento(data);
-    if (data.action === 'actualizar_evento') return actualizarEvento(data);
-    if (data.action === 'cancelar_evento') return cancelarEvento(data);
+    if (data.action === 'crear_evento') return conSincronizacion(crearEvento(data), 'agenda');
+    if (data.action === 'actualizar_evento') return conSincronizacion(actualizarEvento(data), 'agenda');
+    if (data.action === 'cancelar_evento') return conSincronizacion(cancelarEvento(data), 'agenda');
 
     return jsonResponse({ ok: false, error: 'Acción no válida' });
   } catch (error) {
@@ -54,6 +54,14 @@ function doPost(e) {
     SpreadsheetApp.flush();
     lock.releaseLock();
   }
+}
+
+// Tras guardar un evento, la copia de la agenda en Supabase se actualiza al momento
+// (ver Sincronizacion.gs) para que la app lo vea sin esperar a la siguiente sincronización.
+function conSincronizacion(respuesta, clave) {
+  SpreadsheetApp.flush();
+  sincronizarClave(clave);
+  return respuesta;
 }
 
 /* ============ TAREAS ============ */
