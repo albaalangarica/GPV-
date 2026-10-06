@@ -6,11 +6,11 @@
   "scope": "./",
   "display": "standalone",
   "background_color": "#f5f7fa",
-  "theme_color": "#24458a",
+  "theme_color": "#071330",
   "orientation": "portrait-primary",
   "icons": [
-    {"src":"gpv-icon-192.png","sizes":"192x192","type":"image/png"},
-    {"src":"gpv-icon-512.png","sizes":"512x512","type":"image/png"},
-    {"src":"gpv-icon-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+    {"src":"gpv-icon-192.png?v=8","sizes":"192x192","type":"image/png"},
+    {"src":"gpv-icon-512.png?v=8","sizes":"512x512","type":"image/png"},
+    {"src":"gpv-icon-512.png?v=8","sizes":"512x512","type":"image/png","purpose":"maskable"}
   ]
 }
