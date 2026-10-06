@@ -164,9 +164,9 @@ button{font-family:inherit}
 
 /* Filtros */
 .ni-filters{display:grid;gap:12px;margin:18px 0 6px}
-.ni-chips{display:flex;gap:8px;overflow-x:auto;margin:0 -16px;padding:0 16px 2px;scrollbar-width:none}
+.ni-chips{display:flex;flex-wrap:wrap;gap:6px}
 .ni-chips::-webkit-scrollbar{display:none}
-.ni-chip{flex:0 0 auto;border:1px solid var(--line-strong);background:#fff;color:var(--slate);border-radius:999px;padding:9px 15px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.ni-chip{flex:0 0 auto;border:1px solid var(--line-strong);background:#fff;color:var(--slate);border-radius:999px;padding:8px 12px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
 .ni-chip:hover{border-color:rgba(7,19,48,.4);color:var(--night)}
 .ni-chip.active{background:var(--night);border-color:var(--night);color:#fff}
 .ni-chip .n{margin-left:6px;opacity:.6}
@@ -2055,7 +2055,7 @@ function niIniciativas(){
  let list=base.filter(x=>estadoOk(x)&&(niTipo==='Todos'||x.tipo===niTipo));
  if(niOrden==='plazo')list=[...list].sort((a,b)=>(niPlazoISO(a.plazo)||'9999').localeCompare(niPlazoISO(b.plazo)||'9999'));
  else list=[...list].sort((a,b)=>(a.fuente===b.fuente?niExpNum(b)-niExpNum(a):a.fuente==='asg'?-1:1));
- const tipoChips=['Todos',...kinds].map(k=>`<button type="button" class="ni-chip press ${niTipo===k?'active':''}" data-ni-tipo="${esc(k)}">${esc(k)}<span class="n">${byType(k)}</span></button>`).join('');
+ const tipoChips=['Todos',...kinds].map(k=>`<button type="button" class="ni-chip press ${niTipo===k?'active':''}" data-ni-tipo="${esc(k)}">${k==='Todos'?'Todos los tipos':esc(k)}<span class="n">${byType(k)}</span></button>`).join('');
  const estados=isPrensa()?['Todas']:NI_ESTADOS;
  const estadoChips=estados.map(e=>`<button type="button" class="ni-chip press ${niEstado===e?'active':''}" data-ni-estado="${esc(e)}">${esc(e)}<span class="n">${byEstado(e)}</span></button>`).join('');
  const persona=niSeesAll()&&people.length>1?`<select class="ni-select" id="niPersona" aria-label="Parlamentario">${['Todos',...people].map(p=>`<option value="${esc(p)}" ${niPersona===p?'selected':''}>${p==='Todos'?'Todos los parlamentarios':esc(p)}</option>`).join('')}</select>`:'';
