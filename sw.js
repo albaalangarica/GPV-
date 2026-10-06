@@ -1,7 +1,7 @@
 // Solo se guardan en el dispositivo los archivos de la propia app.
 // Las peticiones a Google (hojas, Apps Script) no pasan por aquí: antes se copiaban
 // todas y el almacenamiento del móvil crecía sin límite.
-const CACHE_NAME = 'gpv-v7-app-shell';
+const CACHE_NAME = 'gpv-v8-app-shell';
 
 const APP_FILES = [
   './',
@@ -9,7 +9,9 @@ const APP_FILES = [
   './manifest.webmanifest',
   './gpv-icon.png',
   './gpv-icon-192.png',
-  './gpv-icon-512.png'
+  './gpv-icon-512.png',
+  './favicon.png',
+  './logo-ppvasco-blanco.png'
 ];
 
 self.addEventListener('install', event => {

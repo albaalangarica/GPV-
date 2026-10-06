@@ -1,7 +1,7 @@
 ﻿<!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#071330"><meta name="apple-mobile-web-app-title" content="GPV"><meta name="application-name" content="GPV"><link rel="manifest" href="manifest.webmanifest?v=1"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><title>GPV</title><link rel="apple-touch-icon" href="gpv-icon.png?v=7"><link rel="apple-touch-icon" sizes="180x180" href="gpv-icon.png?v=7"><link rel="icon" type="image/png" sizes="180x180" href="gpv-icon.png?v=7">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#071330"><meta name="apple-mobile-web-app-title" content="GPV"><meta name="application-name" content="GPV"><link rel="manifest" href="manifest.webmanifest?v=2"><link rel="icon" type="image/png" sizes="48x48" href="favicon.png?v=1"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><title>GPV</title><link rel="apple-touch-icon" href="gpv-icon.png?v=8"><link rel="apple-touch-icon" sizes="180x180" href="gpv-icon.png?v=8"><link rel="icon" type="image/png" sizes="180x180" href="gpv-icon.png?v=8">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ==== GPV · sistema visual (inspirado en NNGG Euskadi) ====
@@ -35,7 +35,8 @@ button{font-family:inherit}
 /* Cabecera */
 .ni-top{position:sticky;top:0;z-index:40;background:var(--night);color:#fff;padding-top:env(safe-area-inset-top)}
 .ni-top .wrap{display:flex;align-items:center;gap:12px;height:56px}
-.ni-word{display:flex;align-items:baseline;gap:8px;color:#fff;text-decoration:none;background:none;border:0;padding:0;cursor:pointer}
+.ni-logo{display:block;height:27px;width:auto}
+.ni-word{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;background:none;border:0;padding:0;cursor:pointer}
 .ni-word b{font-size:20px;font-weight:900;letter-spacing:-.04em}
 .ni-word span{white-space:nowrap;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.55)}
 .ni-beta{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--sky);background:rgba(127,178,255,.15);border-radius:999px;padding:3px 8px}
@@ -1818,7 +1819,7 @@ function niCount(n,uno,varios){return `${n} ${n===1?uno:varios}`}
 // ---- Estructura ----
 function niTopBar(){
  const ident=displayIdentity();
- return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><b>GPV</b><span>Grupo Popular Vasco</span></button>${niTopNav()}${niOrderTop()}<button type="button" class="ni-avatar press" data-tab="Mas" aria-label="Más opciones"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></button></div></header>`;
+ return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><img class="ni-logo" src="logo-ppvasco-blanco.png?v=1" alt="PP Vasco" width="130" height="27"><span>Grupo Parlamentario</span></button>${niTopNav()}${niOrderTop()}<button type="button" class="ni-avatar press" data-tab="Mas" aria-label="Más opciones"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></button></div></header>`;
 }
 // En ordenador la navegación va en la cabecera (como NNGG); en móvil, en la barra inferior.
 function niTopNav(){
@@ -2080,7 +2081,7 @@ function niMas(){
 
 // ---- Acceso ----
 function renderLogin(msg=''){
- app.innerHTML=`<div class="ni-login"><div class="inner"><p class="eyebrow" style="color:var(--sky)">Grupo Popular Vasco</p><h1 class="display">Dashboard parlamentario.</h1><p>Agenda, iniciativas, radar y documentos del grupo en un solo sitio.</p><form id="loginForm"><label for="dashboardSelect">¿Quién eres?</label><select id="dashboardSelect" required><option value="" selected disabled>Elige tu perfil</option>${DASHBOARDS.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select><button type="submit">Entrar</button><div id="loginError" class="error">${esc(msg)}</div></form></div></div>`;
+ app.innerHTML=`<div class="ni-login"><div class="inner"><img src="logo-ppvasco-blanco.png?v=1" alt="PP Vasco" style="display:block;height:40px;width:auto;margin-bottom:28px"><p class="eyebrow" style="color:var(--sky)">Grupo Parlamentario Popular Vasco</p><h1 class="display">Dashboard parlamentario.</h1><p>Agenda, iniciativas, radar y documentos del grupo en un solo sitio.</p><form id="loginForm"><label for="dashboardSelect">¿Quién eres?</label><select id="dashboardSelect" required><option value="" selected disabled>Elige tu perfil</option>${DASHBOARDS.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select><button type="submit">Entrar</button><div id="loginError" class="error">${esc(msg)}</div></form></div></div>`;
  document.getElementById('loginForm').onsubmit=async e=>{e.preventDefault();const id=document.getElementById('dashboardSelect').value;if(!id)return;if(!chooseDashboard(id,true))return;app.innerHTML='<div class="loading">Cargando…</div>';await guardedLoadData()};
 }
 
