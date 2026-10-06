@@ -116,6 +116,19 @@ button{font-family:inherit}
 .ni-tag.warning,.ni-tag.agenda-tag-comision{background:var(--warning-50);color:var(--warning)}
 .ni-tag.danger,.ni-tag.agenda-tag-pleno{background:var(--danger-50);color:var(--danger)}
 .ni-tag.night{background:var(--night);color:#fff}
+/* Citas plegables: detalle, lugar y enlaces al pulsar */
+.ni-fold{display:block}
+.ni-fold>summary{display:flex;gap:14px;list-style:none;cursor:pointer}
+.ni-fold>summary::-webkit-details-marker{display:none}
+.ni-fold .ni-more{color:var(--electric);font-weight:700;display:inline-flex;align-items:center;gap:3px}
+.ni-fold[open] .ni-more{display:none}
+.ni-fold-body{margin-left:70px;margin-top:4px}
+.ni-fold-body .ni-event-detail{-webkit-line-clamp:unset;display:block}
+.ni-fold.otro{background:transparent;border-style:dashed;padding:12px 18px}
+.ni-fold.otro .ni-date{background:var(--slate);transform:scale(.86);transform-origin:top left;margin-bottom:-8px}
+.ni-fold.otro h3{font-size:14.5px;font-weight:600;color:var(--slate)}
+.ni-fold.otro .ni-tag{background:var(--mist);color:var(--slate)}
+.ni-fold.otro[open]{background:#fff;border-style:solid}
 /* Plenos: tarjeta destacada y enlace fijo al orden del día */
 .ni-event.pleno{position:relative;overflow:hidden;background:var(--night);border-color:var(--night);color:#fff;box-shadow:0 14px 34px -18px rgba(7,19,48,.75);padding:20px}
 .ni-event.pleno:before{content:'';position:absolute;right:-70px;top:-70px;width:200px;height:200px;border-radius:50%;background:rgba(30,91,255,.35);filter:blur(40px);pointer-events:none}
@@ -1742,7 +1755,7 @@ const NI_ICONS={
  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
  user:'<circle cx="12" cy="8.5" r="4"/><path d="M4.5 20.5c1.2-3.6 4-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/>',
  users:'<circle cx="9" cy="9" r="3.4"/><path d="M3 19.5c.9-3 3.1-4.5 6-4.5s5.1 1.5 6 4.5"/><path d="M15.5 5.8a3.4 3.4 0 0 1 0 6.4M17.5 15.2c1.7.6 2.9 2 3.5 4.3"/>',
- chevronRight:'<path d="m9.5 6 6 6-6 6"/>',chevronLeft:'<path d="M14.5 6 8.5 12l6 6"/>',
+ chevronRight:'<path d="m9.5 6 6 6-6 6"/>',chevronDown:'<path d="m6 9.5 6 6 6-6"/>',chevronLeft:'<path d="M14.5 6 8.5 12l6 6"/>',
  arrowRight:'<path d="M4.5 12h15M13.5 6l6 6-6 6"/>',
  search:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>',
  list:'<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.75" cy="6.5" r=".9"/><circle cx="4.75" cy="12" r=".9"/><circle cx="4.75" cy="17.5" r=".9"/>',
@@ -1763,6 +1776,7 @@ const NI_MESES_LARGOS=['enero','febrero','marzo','abril','mayo','junio','julio',
 const NI_DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 const NI_DIAS_LARGOS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const NI_MAS_TABS=new Set(['Mas','Buzón','Tareas','Grupo','Pendientes','Banco de Datos','Orden','Adjudicaciones']);
+let inVista='lista',inMes=null,inDia=null;
 let agCats=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta']),agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
 let niTipo='Todos',niEstado='Todas',niPersona='Todos',niOrden='recientes',niLastTab='';
 
@@ -1844,7 +1858,17 @@ function niAgendaCard(x){
   agendaManageHTML(x)
  ].filter(Boolean).join('');
  const time=x.event_time&&!/todo el d/i.test(x.event_time)?x.event_time:'';
- return `<article class="ni-card ni-event ${pleno?'pleno':niIsPastToday(x)?'past':''}">${niDateBlock(x.event_date,x.event_date===todayISO()?'electric':'')}<div class="ni-event-body"><div class="ni-tags">${pleno?`<span class="ni-tag star">${ico('star',12)}Pleno</span>`:`<span class="ni-tag ${tag.cls}">${esc(tag.label)}</span>`}</div><h3>${esc(parts.title)}</h3>${parts.detail?`<p class="ni-event-detail">${esc(parts.detail)}</p>`:''}<div class="ni-meta">${time?`<span>${ico('clock',15)}${esc(time)}</span>`:''}${x.location?`<span>${ico('pin',15)}${esc(x.location)}</span>`:''}</div>${links?`<div class="ni-actions">${links}</div>`:''}</div></article>`;
+ const tags=`<div class="ni-tags">${pleno?`<span class="ni-tag star">${ico('star',12)}Pleno</span>`:`<span class="ni-tag ${tag.cls}">${esc(tag.label)}</span>`}</div>`;
+ const timeHTML=time?`<span>${ico('clock',15)}${esc(time)}</span>`:'';
+ const placeHTML=x.location?`<span>${ico('pin',15)}${esc(x.location)}</span>`:'';
+ const detailHTML=parts.detail?`<p class="ni-event-detail">${esc(parts.detail)}</p>`:'';
+ const actionsHTML=links?`<div class="ni-actions">${links}</div>`:'';
+ const dateHTML=niDateBlock(x.event_date,x.event_date===todayISO()?'electric':'');
+ // Los plenos se ven completos. El resto muestra título y hora; el detalle, el lugar y los
+ // enlaces se despliegan al pulsar. Las citas de otras personas salen más discretas.
+ if(pleno)return `<article class="ni-card ni-event pleno">${dateHTML}<div class="ni-event-body">${tags}<h3>${esc(parts.title)}</h3>${detailHTML}<div class="ni-meta">${timeHTML}${placeHTML}</div>${actionsHTML}</div></article>`;
+ const otro=!isOwnAgenda(x),extra=detailHTML||placeHTML||actionsHTML;
+ return `<details class="ni-card ni-event ni-fold ${otro?'otro':''} ${niIsPastToday(x)?'past':''}"><summary>${dateHTML}<div class="ni-event-body">${tags}<h3>${esc(parts.title)}</h3><div class="ni-meta">${timeHTML}${extra?`<span class="ni-more">Ver detalles${ico('chevronDown',14)}</span>`:''}</div></div></summary>${extra?`<div class="ni-fold-body">${detailHTML}${placeHTML?`<div class="ni-meta">${placeHTML}</div>`:''}${actionsHTML}</div>`:''}</details>`;
 }
 function niEmpty(title,text){return `<div class="ni-empty"><b>${esc(title)}</b>${esc(text||'')}</div>`}
 
@@ -1892,7 +1916,15 @@ function niHome(){
  const taskSec=taskUserEnabled()?`<section class="ni-section"><div class="wrap">${homeTasks()}</div></section>`:'';
  const radarSec=(!isPrensa()&&!isEquipo())?radarHome():'';
  const radarWrap=(!isPrensa()&&!isEquipo())?`<section class="ni-section"><div class="wrap">${niSectionHead('Radar',radarSec?'Lo de hoy':'Nada nuevo hoy',`<button type="button" class="ni-link" data-tab="Radar">Todo el radar ${ico('arrowRight',16)}</button>`)}${radarSec}</div></section>`:'';
- return hero+todaySec+dlSec+weekSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+ const vistaSeg=`<div class="ni-seg" role="tablist" aria-label="Vista de la agenda"><button type="button" data-in-vista="lista" class="${inVista==='lista'?'active':''}">${ico('list',15)}Lista</button><button type="button" data-in-vista="mes" class="${inVista==='mes'?'active':''}">${ico('grid',15)}Calendario</button></div>`;
+ if(inVista==='mes'){
+  if(!inMes)inMes=hoy.slice(0,7);if(inDia===null)inDia=hoy;
+  const all=niSeesAll(),items=visibleAgendaItems().filter(x=>(all||isOwnAgenda(x))&&(x.type||'').toLowerCase()!=='vencimiento').sort(niByDate);
+  const list=items.filter(x=>inDia?x.event_date===inDia:x.event_date.startsWith(inMes));
+  const calSec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Agenda','Calendario',vistaSeg)}<div class="ni-grid" style="margin-top:16px">${niMonthGrid(items,inMes,inDia,'in')}<div><p class="ni-count">${inDia?`<b>${esc(niRelDay(inDia))}</b>`:`<b>Todo ${NI_MESES_LARGOS[Number(inMes.slice(5))-1]}</b>`} · ${niCount(list.length,'cita','citas')}</p>${list.length?`<div class="ni-grid two">${list.map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas','Elige otro día en el calendario.')}</div></div><div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
+  return hero+calSec+dlSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+ }
+ return hero+todaySec.replace(niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`),niSectionHead('Hoy','Agenda de hoy',vistaSeg))+dlSec+weekSec+taskSec+radarWrap+'<div style="height:12px"></div>';
 }
 
 // ---- Agenda ----
@@ -1906,14 +1938,15 @@ function niAgendaItems(){
  return items.sort(niByDate);
 }
 function niMonthKey(iso){return iso.slice(0,7)}
-function niMonthGrid(items){
- const [y,m]=agMes.split('-').map(Number),first=new Date(y,m-1,1,12),days=new Date(y,m,0).getDate();
+// Calendario mensual compartido por la Agenda (ns 'ag') y el Inicio (ns 'in').
+function niMonthGrid(items,mes=agMes,dia=agDia,ns='ag'){
+ const [y,m]=mes.split('-').map(Number),first=new Date(y,m-1,1,12),days=new Date(y,m,0).getDate();
  const offset=(first.getDay()+6)%7,hoy=todayISO();
- const byDay={};for(const x of items){if(x.event_date.startsWith(agMes))byDay[x.event_date]=(byDay[x.event_date]||0)+1}
+ const byDay={};for(const x of items){if(x.event_date.startsWith(mes))byDay[x.event_date]=(byDay[x.event_date]||0)+1}
  let cells='';
  for(let i=0;i<offset;i++)cells+='<span></span>';
- for(let d=1;d<=days;d++){const iso=`${agMes}-${String(d).padStart(2,'0')}`,n=byDay[iso]||0;cells+=`<button type="button" data-ag-dia="${iso}" class="${iso===hoy?'today':''} ${iso===agDia?'sel':''}" aria-label="${d}${n?`, ${niCount(n,'cita','citas')}`:''}">${d}${n?`<span class="dots">${'<i></i>'.repeat(Math.min(n,3))}</span>`:''}</button>`}
- return `<div class="ni-month"><div class="ni-month-head"><button type="button" data-ag-mes="-1" aria-label="Mes anterior">${ico('chevronLeft',18)}</button><b>${NI_MESES_LARGOS[m-1]} ${y}</b><button type="button" data-ag-mes="1" aria-label="Mes siguiente">${ico('chevronRight',18)}</button></div><div class="ni-mgrid">${['L','M','X','J','V','S','D'].map(d=>`<span class="wd">${d}</span>`).join('')}${cells}</div></div>`;
+ for(let d=1;d<=days;d++){const iso=`${mes}-${String(d).padStart(2,'0')}`,n=byDay[iso]||0;cells+=`<button type="button" data-${ns}-dia="${iso}" class="${iso===hoy?'today':''} ${iso===dia?'sel':''}" aria-label="${d}${n?`, ${niCount(n,'cita','citas')}`:''}">${d}${n?`<span class="dots">${'<i></i>'.repeat(Math.min(n,3))}</span>`:''}</button>`}
+ return `<div class="ni-month"><div class="ni-month-head"><button type="button" data-${ns}-mes="-1" aria-label="Mes anterior">${ico('chevronLeft',18)}</button><b>${NI_MESES_LARGOS[m-1]} ${y}</b><button type="button" data-${ns}-mes="1" aria-label="Mes siguiente">${ico('chevronRight',18)}</button></div><div class="ni-mgrid">${['L','M','X','J','V','S','D'].map(d=>`<span class="wd">${d}</span>`).join('')}${cells}</div></div>`;
 }
 function niAgenda(){
  const hoy=todayISO();if(!agMes)agMes=niMonthKey(hoy);
@@ -2012,6 +2045,9 @@ function niBind(){
  on('[data-ag-cat]',b=>{const c=b.dataset.agCat;agCats.has(c)?agCats.delete(c):agCats.add(c);render()});
  on('[data-ag-mas]',()=>{agDias+=30;render()});
  on('[data-ag-scope]',b=>{agScope=b.dataset.agScope;render()});
+ on('[data-in-vista]',b=>{inVista=b.dataset.inVista;inMes=todayISO().slice(0,7);inDia=todayISO();render()});
+ on('[data-in-dia]',b=>{inDia=inDia===b.dataset.inDia?'':b.dataset.inDia;render()});
+ on('[data-in-mes]',b=>{const [y,m]=inMes.split('-').map(Number);const d=new Date(y,m-1+Number(b.dataset.inMes),1);inMes=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;inDia='';render()});
  on('[data-ag-vista]',b=>{agVista=b.dataset.agVista;agDia=null;render()});
  on('[data-ag-dia]',b=>{agDia=agDia===b.dataset.agDia?null:b.dataset.agDia;render()});
  on('[data-ag-mes]',b=>{const [y,m]=agMes.split('-').map(Number);const d=new Date(y,m-1+Number(b.dataset.agMes),1);agMes=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;agDia=null;render()});
