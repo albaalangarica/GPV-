@@ -99,6 +99,13 @@ button{font-family:inherit}
 .ni-event-body{min-width:0;flex:1}
 .ni-event h3,.ni-init h3{margin:8px 0 0;font-size:16px;font-weight:700;line-height:1.3;letter-spacing:-.01em;color:var(--night)}
 .ni-event-detail{margin:5px 0 0;color:var(--slate);font-size:13px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ni-evtop{display:flex;align-items:center;gap:8px;min-width:0}
+.ni-evinfo{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--slate);font-size:12.5px;font-weight:600}
+.ni-evtop .cal-btn{margin-left:auto;flex:0 0 auto;display:inline-flex!important;padding:0!important;font-size:17px!important;line-height:1;background:none;border:0;cursor:pointer}
+.ni-event.pleno .ni-evinfo{color:rgba(255,255,255,.75)}
+.ni-event{padding:14px 16px}
+.ni-event h3{margin-top:6px!important}
+.ni-event .ni-date{width:50px;padding:6px 0 7px}
 .ni-meta{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;color:var(--slate);font-size:12.5px;font-weight:500}
 .ni-meta span{display:inline-flex;align-items:center;gap:5px;min-width:0}
 .ni-actions{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;align-items:center}
@@ -1880,17 +1887,17 @@ function niAgendaCard(x){
   order?`<a ${pleno?'class="ni-orderbtn" ':''}href="${esc(order)}" target="_blank" rel="noopener">${ico('document',15)}Orden del día${pleno&&!agendaOrderLink(x)?' <small>· aún sin publicar</small>':''}</a>`:'',
   x.group_zoom?`<a href="${esc(x.group_zoom)}" target="_blank" rel="noopener">${ico('users',15)}Entrar por Zoom</a>`:'',
   agendaManualLinkHTML(x).replace('Ver enlace →','Ver enlace'),
-  calendarButtonHTML(agendaCalendarEvent(x),'📅 A mi calendario'),
   agendaManageHTML(x)
  ].filter(Boolean).join('');
  const time=x.event_time&&!/todo el d/i.test(x.event_time)?x.event_time:'';
- const tags=`<div class="ni-tags">${pleno?`<span class="ni-tag star">${ico('star',12)}Pleno</span>`:`<span class="ni-tag ${tag.cls}">${esc(tag.label)}</span>`}</div>`;
- const timeHTML=time?`<span>${ico('clock',15)}${esc(time)}</span>`:'';
- const placeHTML=x.location?`<span>${ico('pin',15)}${esc(x.location)}</span>`:'';
- const detailHTML=parts.detail?`<p class="ni-event-detail">${esc(parts.detail)}</p>`:'';
+ // Compacta: una línea con tipo, hora y lugar (+ botón de calendario), el título y, solo si hay, los enlaces.
+ // Sin subtítulo: el detalle del asunto no se muestra en la agenda.
+ const tagHTML=pleno?`<span class="ni-tag star">${ico('star',12)}Pleno</span>`:`<span class="ni-tag ${tag.cls}">${esc(tag.label)}</span>`;
+ const info=[time,x.location].filter(Boolean).map(esc).join(' · ');
+ const cal=calendarButtonHTML(agendaCalendarEvent(x),'📅');
  const actionsHTML=links?`<div class="ni-actions">${links}</div>`:'';
  const dateHTML=niDateBlock(x.event_date,x.event_date===todayISO()?'electric':'');
- return `<article class="ni-card ni-event ${pleno?'pleno':niIsPastToday(x)?'past':''}">${dateHTML}<div class="ni-event-body">${tags}<h3>${esc(parts.title)}</h3>${detailHTML}<div class="ni-meta">${timeHTML}${placeHTML}</div>${actionsHTML}</div></article>`;
+ return `<article class="ni-card ni-event ${pleno?'pleno':niIsPastToday(x)?'past':''}">${dateHTML}<div class="ni-event-body"><div class="ni-evtop">${tagHTML}${info?`<span class="ni-evinfo">${info}</span>`:''}${cal}</div><h3>${esc(parts.title)}</h3>${actionsHTML}</div></article>`;
 }
 function niEmpty(title,text){return `<div class="ni-empty"><b>${esc(title)}</b>${esc(text||'')}</div>`}
 
