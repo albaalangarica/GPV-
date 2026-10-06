@@ -1880,14 +1880,12 @@ function niHome(){
  const ident=displayIdentity(),first=String(ident.name||'').split(' ')[0];
  const hoy=todayISO(),up=niOwnUpcoming();
  const today=up.filter(x=>x.event_date===hoy);
- const next=up.find(x=>!niIsPastToday(x));
  const week=up.filter(x=>x.event_date>hoy&&x.event_date<=plusDaysISO(hoy,7));
  const deadlines=niDeadlines(7);
  const inbox=niInboxCount();
  const openTasks=taskUserEnabled()?tasks.filter(t=>!t.done):[];
  // Titular: la fecha de hoy.
  const title=niLongDate(hoy).replace(/^./,c=>c.toUpperCase())+'.';
- const nextCard=next?`<button type="button" class="ni-next press" data-tab="Agenda"><span class="tile">${ico('calendar',22)}</span><span class="txt"><small>Lo siguiente · ${esc(niRelDay(next.event_date))}${next.event_time&&/^\d/.test(next.event_time)?' · '+esc(next.event_time):''}</small><b>${esc(agendaTitleParts(next).title)}</b>${next.location?`<span>${esc(next.location)}</span>`:''}</span>${ico('chevronRight',20)}</button>`:'';
  const shortcuts=[
   `<button type="button" data-tab="Agenda">${ico('calendar',16)}Toda la agenda</button>`,
   deadlines.length?`<a href="#ni-vencimientos">${ico('alert',16)}Vencimientos <span class="count">${deadlines.length}</span></a>`:'',
@@ -1896,7 +1894,7 @@ function niHome(){
   `<button type="button" data-tab="Radar">${ico('radar',16)}Radar</button>`,
   `<button type="button" data-tab="Iniciativas">${ico('document',16)}Iniciativas</button>`
  ].filter(Boolean).join('');
- const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1>${niPlenoBanner()}${nextCard}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
+ const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1>${niPlenoBanner()}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
 
  const todaySec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`)}${today.length?`<div class="ni-grid two">${today.map(niAgendaCard).join('')}</div>`:niEmpty('Nada en la agenda de hoy','Consulta lo que viene esta semana.')}</div></section>`;
  const weekSec=`<section class="ni-section"><div class="wrap">${niSectionHead('Próximos días',week.length?`${niCount(week.length,'cita','citas')} esta semana`:'Semana tranquila',`<button type="button" class="ni-link" data-tab="Agenda">Ver todo ${ico('arrowRight',16)}</button>`)}${week.length?`<div class="ni-grid two">${week.slice(0,6).map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas en los próximos 7 días','')}<div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
