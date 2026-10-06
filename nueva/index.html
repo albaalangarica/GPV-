@@ -45,7 +45,7 @@ button{font-family:inherit}
 
 /* Barra inferior */
 .ni-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(7,19,48,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.1);padding-bottom:env(safe-area-inset-bottom)}
-.ni-nav ul{list-style:none;margin:0 auto;padding:0 4px;max-width:560px;display:grid;grid-template-columns:repeat(5,1fr)}
+.ni-nav ul{list-style:none;margin:0 auto;padding:0 4px;max-width:480px;display:grid;grid-auto-flow:column;grid-auto-columns:1fr}
 .ni-nav button{width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0 8px;border:0;background:none;cursor:pointer;color:rgba(255,255,255,.55)}
 .ni-nav .ni-navpill{display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:999px;transition:background-color .2s}
 .ni-nav small{font-size:10px;font-weight:600;letter-spacing:.02em}
@@ -75,6 +75,7 @@ button{font-family:inherit}
 .ni-head{background:var(--night);color:#fff}
 .ni-head .wrap{padding-top:22px;padding-bottom:28px}
 .ni-head .eyebrow{color:var(--sky)}
+.ni-back{display:inline-flex;align-items:center;gap:4px;margin:0 0 14px -4px;border:0;background:none;padding:4px;color:rgba(255,255,255,.7);font:inherit;font-size:13px;font-weight:600;cursor:pointer}.ni-back:hover{color:#fff}
 .ni-head h1{margin:10px 0 0;font-size:36px}
 .ni-head p{margin:10px 0 0;max-width:600px;color:rgba(255,255,255,.7);font-size:14px}
 
@@ -1757,13 +1758,13 @@ function niTopNav(){
  const active=niActiveNav();
  return `<nav class="ni-topnav" aria-label="Principal"><ul>${niNavItems().map(([t,i,l])=>`<li><button type="button" data-tab="${t}" class="press ${active===t?'active':''}" ${active===t?'aria-current="page"':''}>${ico(i,18)}${l}</button></li>`).join('')}</ul></nav>`;
 }
-function niNavItems(){return [['Inicio','home','Inicio'],['Agenda','calendar','Agenda'],['Iniciativas','document','Iniciativas'],['Radar','radar','Radar'],['Mas','grid','Más']]}
-function niActiveNav(){if(NI_MAS_TABS.has(tab))return 'Mas';if(tab==='Solicitudes')return 'Iniciativas';return tab}
+function niNavItems(){return [['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Radar','radar','Radar'],['Mas','grid','Más']]}
+function niActiveNav(){if(tab==='Agenda')return 'Inicio';if(NI_MAS_TABS.has(tab))return 'Mas';if(tab==='Solicitudes')return 'Iniciativas';return tab}
 function niBottomNav(){
  const active=niActiveNav();
  return `<nav class="ni-nav" aria-label="Principal"><ul>${niNavItems().map(([t,i,l])=>`<li><button type="button" data-tab="${t}" class="press ${active===t?'active':''}" ${active===t?'aria-current="page"':''}><span class="ni-navpill">${ico(i,21)}</span><small>${l}</small></button></li>`).join('')}</ul></nav>`;
 }
-function niPageHeader(eyebrow,title,sub=''){return `<section class="ni-head"><div class="wrap"><p class="eyebrow">${esc(eyebrow)}</p><h1 class="display">${title}</h1>${sub?`<p>${sub}</p>`:''}</div></section>`}
+function niPageHeader(eyebrow,title,sub='',back=''){return `<section class="ni-head"><div class="wrap">${back?`<button type="button" class="ni-back press" data-tab="${back}">${ico('chevronLeft',16)}${esc(back)}</button>`:''}<p class="eyebrow">${esc(eyebrow)}</p><h1 class="display">${title}</h1>${sub?`<p>${sub}</p>`:''}</div></section>`}
 function niSectionHead(eyebrow,title,action=''){return `<div class="ni-sechead"><div><p class="eyebrow">${esc(eyebrow)}</p><h2>${title}</h2></div>${action}</div>`}
 function niLegacy(html){return `<div class="wrap ni-legacy">${html}</div>`}
 
@@ -1834,7 +1835,7 @@ function niHome(){
  const title=today.length?`Hoy tienes ${niCount(today.length,'cita','citas')}.`:'Hoy no tienes citas.';
  const nextCard=next?`<button type="button" class="ni-next press" data-tab="Agenda"><span class="tile">${ico('calendar',22)}</span><span class="txt"><small>Lo siguiente · ${esc(niRelDay(next.event_date))}${next.event_time&&/^\d/.test(next.event_time)?' · '+esc(next.event_time):''}</small><b>${esc(agendaTitleParts(next).title)}</b>${next.location?`<span>${esc(next.location)}</span>`:''}</span>${ico('chevronRight',20)}</button>`:'';
  const shortcuts=[
-  `<a href="#ni-hoy">${ico('calendar',16)}Hoy</a>`,
+  `<button type="button" data-tab="Agenda">${ico('calendar',16)}Toda la agenda</button>`,
   deadlines.length?`<a href="#ni-vencimientos">${ico('alert',16)}Vencimientos <span class="count">${deadlines.length}</span></a>`:'',
   taskUserEnabled()?`<button type="button" data-go="Tareas">${ico('tasks',16)}Tareas${openTasks.length?` <span class="count">${openTasks.length}</span>`:''}</button>`:'',
   inbox!==null?`<button type="button" data-tab="Buzón">${ico('inbox',16)}Buzón${inbox?` <span class="count">${inbox}</span>`:''}</button>`:'',
@@ -1842,8 +1843,8 @@ function niHome(){
  ].filter(Boolean).join('');
  const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1><p class="sub">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</p>${nextCard}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
 
- const todaySec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Hoy',esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase())),`<button type="button" class="ni-link" data-tab="Agenda">Agenda ${ico('arrowRight',16)}</button>`)}${today.length?`<div class="ni-grid two">${today.map(niAgendaCard).join('')}</div>`:niEmpty('Nada en la agenda de hoy','Consulta lo que viene esta semana.')}</div></section>`;
- const weekSec=`<section class="ni-section"><div class="wrap">${niSectionHead('Próximos días',week.length?`${niCount(week.length,'cita','citas')} esta semana`:'Semana tranquila',`<button type="button" class="ni-link" data-tab="Agenda">Ver todo ${ico('arrowRight',16)}</button>`)}${week.length?`<div class="ni-grid two">${week.slice(0,6).map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas en los próximos 7 días','')}</div></section>`;
+ const todaySec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Hoy',esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase())),`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`)}${today.length?`<div class="ni-grid two">${today.map(niAgendaCard).join('')}</div>`:niEmpty('Nada en la agenda de hoy','Consulta lo que viene esta semana.')}</div></section>`;
+ const weekSec=`<section class="ni-section"><div class="wrap">${niSectionHead('Próximos días',week.length?`${niCount(week.length,'cita','citas')} esta semana`:'Semana tranquila',`<button type="button" class="ni-link" data-tab="Agenda">Ver todo ${ico('arrowRight',16)}</button>`)}${week.length?`<div class="ni-grid two">${week.slice(0,6).map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas en los próximos 7 días','')}<div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
  const dlSec=deadlines.length?`<section class="ni-section" id="ni-vencimientos"><div class="wrap">${niSectionHead('Vencimientos','Plazos de esta semana')}<div class="ni-grid two">${deadlines.slice(0,8).map(x=>{const who=String(x.detail||'').split(':')[0];return `<article class="ni-card ni-event">${niDateBlock(x.event_date,'danger')}<div class="ni-event-body"><div class="ni-tags"><span class="ni-tag danger">${esc(x.organ_activity||'Plazo')}</span></div><h3>${esc(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</h3>${niSeesAll()&&who?`<div class="ni-meta"><span>${ico('user',15)}${esc(who)}</span></div>`:''}${initiativeLinkHTMLByTitle(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</div></article>`}).join('')}</div></div></section>`:'';
 
  const d=niInitiativeData(),pend=d.filter(x=>x.estado==='Pendiente').length,resp=d.filter(x=>x.estado==='Contestada').length,asg=d.filter(x=>x.estado==='Asignada').length;
@@ -1890,7 +1891,7 @@ function niAgenda(){
   const groups=[];for(const x of future){const g=groups[groups.length-1];if(g&&g.day===x.event_date)g.items.push(x);else groups.push({day:x.event_date,items:[x]})}
   body=(groups.length?groups.map(g=>`<p class="ni-daylabel ${g.day===hoy?'today':''}">${esc(niRelDay(g.day))}${g.day!==hoy&&g.day!==plusDaysISO(hoy,1)?'':' · '+esc(niLongDate(g.day))}</p><div class="ni-grid two">${g.items.map(niAgendaCard).join('')}</div>`).join(''):`<div style="margin-top:16px">${niEmpty(`No hay citas en los próximos ${agDias} días`,'Cambia los filtros o mira la vista de mes.')}</div>`)+(more?`<div style="margin-top:18px;text-align:center"><button type="button" class="ni-btn ghost" data-ag-mas>Ver más · ${niCount(more,'cita más','citas más')}</button></div>`:'');
  }
- return niPageHeader('Agenda','Lo que viene.',agScope==='mias'?'Tus citas y las del grupo que te afectan.':'Toda la agenda parlamentaria del grupo.')+`<div class="wrap"><div class="ni-filters"><div class="ni-chips">${chips}</div><div class="ni-row">${scope}${vista}${nuevo}</div></div>${body}</div><div style="height:16px"></div>`;
+ return niPageHeader('Agenda','Lo que viene.',agScope==='mias'?'Tus citas y las del grupo que te afectan.':'Toda la agenda parlamentaria del grupo.','Inicio')+`<div class="wrap"><div class="ni-filters"><div class="ni-chips">${chips}</div><div class="ni-row">${scope}${vista}${nuevo}</div></div>${body}</div><div style="height:16px"></div>`;
 }
 
 // ---- Iniciativas ----
