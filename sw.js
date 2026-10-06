@@ -1,7 +1,7 @@
 // Solo se guardan en el dispositivo los archivos de la propia app.
 // Las peticiones a Google (hojas, Apps Script) no pasan por aquí: antes se copiaban
 // todas y el almacenamiento del móvil crecía sin límite.
-const CACHE_NAME = 'gpv-v5-app-shell';
+const CACHE_NAME = 'gpv-v6-app-shell';
 
 const APP_FILES = [
   './',
@@ -48,12 +48,14 @@ self.addEventListener('fetch', event => {
         .then(response => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put('./index.html', copy));
+            // Cada página se guarda con su propia dirección (la versión de prueba /nueva/
+            // no debe sustituir a la app principal en el modo sin conexión).
+            caches.open(CACHE_NAME).then(cache => cache.put(request.url.split('#')[0], copy));
           }
           return response;
         })
         .catch(() =>
-          caches.match(request).then(cached => cached || caches.match('./index.html'))
+          caches.match(request.url.split('#')[0]).then(cached => cached || caches.match('./index.html'))
         )
     );
     return;
