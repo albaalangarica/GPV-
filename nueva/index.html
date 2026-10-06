@@ -1735,7 +1735,7 @@ const NI_MESES_LARGOS=['enero','febrero','marzo','abril','mayo','junio','julio',
 const NI_DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 const NI_DIAS_LARGOS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const NI_MAS_TABS=new Set(['Mas','Panel','Buzón','Tareas','Grupo','Pendientes','Banco de Datos','Orden','Adjudicaciones']);
-let agCat='Todo',agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
+let agCats=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta']),agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
 let niTipo='Todos',niEstado='Todas',niPersona='Todos',niOrden='recientes',niLastTab='';
 
 function niSeesAll(){return isAdmin()||isPrensa()||isEquipo()}
@@ -1832,7 +1832,8 @@ function niHome(){
  const deadlines=niDeadlines(7);
  const inbox=niInboxCount();
  const openTasks=taskUserEnabled()?tasks.filter(t=>!t.done):[];
- const title=today.length?`Hoy tienes ${niCount(today.length,'cita','citas')}.`:'Hoy no tienes citas.';
+ // Titular: la fecha de hoy.
+ const title=niLongDate(hoy).replace(/^./,c=>c.toUpperCase())+'.';
  const nextCard=next?`<button type="button" class="ni-next press" data-tab="Agenda"><span class="tile">${ico('calendar',22)}</span><span class="txt"><small>Lo siguiente · ${esc(niRelDay(next.event_date))}${next.event_time&&/^\d/.test(next.event_time)?' · '+esc(next.event_time):''}</small><b>${esc(agendaTitleParts(next).title)}</b>${next.location?`<span>${esc(next.location)}</span>`:''}</span>${ico('chevronRight',20)}</button>`:'';
  const shortcuts=[
   `<button type="button" data-tab="Agenda">${ico('calendar',16)}Toda la agenda</button>`,
@@ -1841,9 +1842,9 @@ function niHome(){
   inbox!==null?`<button type="button" data-tab="Buzón">${ico('inbox',16)}Buzón${inbox?` <span class="count">${inbox}</span>`:''}</button>`:'',
   `<button type="button" data-tab="Iniciativas">${ico('document',16)}Iniciativas</button>`
  ].filter(Boolean).join('');
- const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1><p class="sub">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</p>${nextCard}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
+ const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1>${nextCard}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
 
- const todaySec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Hoy',esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase())),`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`)}${today.length?`<div class="ni-grid two">${today.map(niAgendaCard).join('')}</div>`:niEmpty('Nada en la agenda de hoy','Consulta lo que viene esta semana.')}</div></section>`;
+ const todaySec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`)}${today.length?`<div class="ni-grid two">${today.map(niAgendaCard).join('')}</div>`:niEmpty('Nada en la agenda de hoy','Consulta lo que viene esta semana.')}</div></section>`;
  const weekSec=`<section class="ni-section"><div class="wrap">${niSectionHead('Próximos días',week.length?`${niCount(week.length,'cita','citas')} esta semana`:'Semana tranquila',`<button type="button" class="ni-link" data-tab="Agenda">Ver todo ${ico('arrowRight',16)}</button>`)}${week.length?`<div class="ni-grid two">${week.slice(0,6).map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas en los próximos 7 días','')}<div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
  const dlSec=deadlines.length?`<section class="ni-section" id="ni-vencimientos"><div class="wrap">${niSectionHead('Vencimientos','Plazos de esta semana')}<div class="ni-grid two">${deadlines.slice(0,8).map(x=>{const who=String(x.detail||'').split(':')[0];return `<article class="ni-card ni-event">${niDateBlock(x.event_date,'danger')}<div class="ni-event-body"><div class="ni-tags"><span class="ni-tag danger">${esc(x.organ_activity||'Plazo')}</span></div><h3>${esc(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</h3>${niSeesAll()&&who?`<div class="ni-meta"><span>${ico('user',15)}${esc(who)}</span></div>`:''}${initiativeLinkHTMLByTitle(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</div></article>`}).join('')}</div></div></section>`:'';
 
@@ -1857,12 +1858,13 @@ function niHome(){
 }
 
 // ---- Agenda ----
-const NI_AG_CATS=['Todo','Plenos y Comisiones','Grupo','Mesa y Junta','Otros'];
+// Tipos de cita: se pueden marcar varios a la vez; por defecto todos menos «Otros».
+const NI_AG_CATS=['Plenos y Comisiones','Grupo','Mesa y Junta','Otros'];
 function niAgendaItems(){
  if(agScope===null)agScope=niSeesAll()?'todo':'mias';
  let items=visibleAgendaItems().filter(x=>(x.type||'').toLowerCase()!=='vencimiento');
  if(agScope==='mias')items=items.filter(isOwnAgenda);
- if(agCat!=='Todo')items=items.filter(x=>category(x)===agCat);
+ items=items.filter(x=>agCats.has(category(x)));
  return items.sort(niByDate);
 }
 function niMonthKey(iso){return iso.slice(0,7)}
@@ -1878,7 +1880,7 @@ function niMonthGrid(items){
 function niAgenda(){
  const hoy=todayISO();if(!agMes)agMes=niMonthKey(hoy);
  const items=niAgendaItems();
- const chips=NI_AG_CATS.map(c=>`<button type="button" class="ni-chip press ${agCat===c?'active':''}" data-ag-cat="${esc(c)}">${esc(c==='Todo'?'Todo':c)}</button>`).join('');
+ const chips=NI_AG_CATS.map(c=>`<button type="button" class="ni-chip press ${agCats.has(c)?'active':''}" data-ag-cat="${esc(c)}" aria-pressed="${agCats.has(c)}">${agCats.has(c)?ico('check',14)+' ':''}${esc(c)}</button>`).join('');
  const scope=`<div class="ni-seg" role="tablist" aria-label="Qué citas"><button type="button" data-ag-scope="mias" class="${agScope==='mias'?'active':''}">${ico('user',15)}Mías</button><button type="button" data-ag-scope="todo" class="${agScope==='todo'?'active':''}">${ico('users',15)}Todo el grupo</button></div>`;
  const vista=`<div class="ni-seg" role="tablist" aria-label="Vista"><button type="button" data-ag-vista="lista" class="${agVista==='lista'?'active':''}">${ico('list',15)}Próximas</button><button type="button" data-ag-vista="mes" class="${agVista==='mes'?'active':''}">${ico('grid',15)}Mes</button></div>`;
  const nuevo=canManageAgendaEvents()?`<button type="button" class="ni-btn" id="btnNuevoEvento">${ico('plus',16)}Crear evento</button>`:'';
@@ -1968,7 +1970,7 @@ function renderLogin(msg=''){
 // ---- Interacción ----
 function niBind(){
  const on=(sel,fn)=>document.querySelectorAll(sel).forEach(b=>b.onclick=()=>fn(b));
- on('[data-ag-cat]',b=>{agCat=b.dataset.agCat;render()});
+ on('[data-ag-cat]',b=>{const c=b.dataset.agCat;agCats.has(c)?agCats.delete(c):agCats.add(c);render()});
  on('[data-ag-mas]',()=>{agDias+=30;render()});
  on('[data-ag-scope]',b=>{agScope=b.dataset.agScope;render()});
  on('[data-ag-vista]',b=>{agVista=b.dataset.agVista;agDia=null;render()});
