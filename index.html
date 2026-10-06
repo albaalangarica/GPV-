@@ -116,6 +116,14 @@ button{font-family:inherit}
 .ni-tag.warning,.ni-tag.agenda-tag-comision{background:var(--warning-50);color:var(--warning)}
 .ni-tag.danger,.ni-tag.agenda-tag-pleno{background:var(--danger-50);color:var(--danger)}
 .ni-tag.night{background:var(--night);color:#fff}
+/* Iniciativas importantes */
+.ni-init{position:relative}
+.ni-init .ni-tags{padding-right:40px}
+.ni-star{position:absolute;top:12px;right:12px;width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--slate);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ni-star:hover{border-color:var(--electric);color:var(--electric)}
+.ni-star.on{background:#ffb800;border-color:#ffb800;color:#fff}
+.ni-init.imp{border-color:#ffb800;box-shadow:0 0 0 1px #ffb800 inset}
+.ni-tag.star{background:#fff4d1;color:#9a6a00}
 /* Plenos: tarjeta destacada y enlace fijo al orden del día */
 .ni-event.pleno{position:relative;overflow:hidden;background:var(--night);border-color:var(--night);color:#fff;box-shadow:0 14px 34px -18px rgba(7,19,48,.75);padding:20px}
 .ni-event.pleno:before{content:'';position:absolute;right:-70px;top:-70px;width:200px;height:200px;border-radius:50%;background:rgba(30,91,255,.35);filter:blur(40px);pointer-events:none}
@@ -416,7 +424,7 @@ const app=document.getElementById('app');
 const BUZON_PASSWORD='1234';
 const TASKS_API_URL='https://script.google.com/macros/s/AKfycbyrWHyc-PwWrccvjufnv7MLnrUom6tTvcJXDtiDXt1Ee9a698ju5vkJi2K0Sy4AUFNs/exec';
 let tasks=[],tasksLoadedFor='';
-let remoteDismissed=new Set(),remoteStateLoadedFor='',remoteRefreshBusy=false;
+let remoteImportantes=null,remoteDismissed=new Set(),remoteStateLoadedFor='',remoteRefreshBusy=false;
 let buzonUnlocked=false,bdSearchTimer=null,liveSearchTimer=null,initiativeSearch='',repoSearch='',repoItems=[],repoLoaded=false,repoLoading=false,repoAvailable=true;
 
 
@@ -529,6 +537,7 @@ function scheduleOutboxCheck(ms=6000){clearTimeout(outboxTimer);outboxTimer=setT
 function outboxEntryConfirmed(e,fresh){
  if(e.kind==='task'){const list=fresh.tasks;if(!Array.isArray(list))return null;const found=list.find(t=>String(t.id)===e.target);if(e.op==='delete')return !found;if(!found)return false;const l=e.local||{};return (found.title===undefined||l.title===undefined||String(found.title)===String(l.title))&&(found.done===undefined||l.done===undefined||!!found.done===!!l.done)}
  if(e.kind==='event'){const list=fresh.agenda;if(!Array.isArray(list))return null;const found=list.find(x=>String(x.id_evento)===e.target);if(e.op==='delete')return !found;if(!found)return false;const l=e.local||{};return (!l.event_date||found.event_date===l.event_date)&&(!l.organ_activity||String(found.organ_activity).trim()===String(l.organ_activity).trim())}
+ if(e.kind==='importante'){const list=fresh.importantes;if(!Array.isArray(list))return null;const meN=normPerson(e.user);const has=list.some(x=>x.clave===e.target&&normPerson(x.parlamentario)===meN);return e.op==='add'?has:!has}
  if(e.kind==='dismissal'){const set=fresh.dismissals;if(!set)return null;return e.op==='add'?set.has(e.target):!set.has(e.target)}
  return null;
 }
@@ -541,6 +550,7 @@ async function verifyOutbox(){
   await Promise.all([
    kinds.has('task')?loadRemoteTasks().then(v=>{fresh.tasks=v}).catch(()=>{}):null,
    kinds.has('dismissal')?loadRemoteDismissals().then(v=>{if(Array.isArray(v))fresh.dismissals=new Set(v.filter(x=>x&&x.tipo&&x.item_id).map(x=>String(x.tipo).toLowerCase()+':'+String(x.item_id)))}).catch(()=>{}):null,
+   kinds.has('importante')?loadRemoteImportantes().then(v=>{fresh.importantes=v}).catch(()=>{}):null,
    kinds.has('event')?loadAgendaFromSheet().then(v=>{fresh.agenda=v}).catch(()=>{}):null
   ]);
   if(session!==who)return;
@@ -559,6 +569,7 @@ async function verifyOutbox(){
   }
   writeOutbox(list);
   if(Array.isArray(fresh.tasks)||fresh.dismissals)applyRemoteUserState(Array.isArray(fresh.tasks)?fresh.tasks:null,fresh.dismissals?[...fresh.dismissals].map(k=>{const i=k.indexOf(':');return {tipo:k.slice(0,i),item_id:k.slice(i+1)}}):null);
+  if(Array.isArray(fresh.importantes))remoteImportantes=fresh.importantes;
   if(Array.isArray(fresh.agenda)&&fresh.agenda.length)setSourceData('agenda',fresh.agenda);
   scheduleRender();
  }finally{outboxBusy=false;updateSyncBanner()}
@@ -600,6 +611,33 @@ async function loadRemoteDismissals(){
 function dismissalIds(x){return [...new Set([x&&x.id,...((x&&x.dismissIds)||[]),x&&x.legacyId].filter(Boolean).map(String))]}
 function dismissalLocalPrefix(type){return `gpvDismissed:${notificationUserKey()}:${type}:`}
 function oldDismissalPrefix(type){return type==='radar'?'gpvRadarDismissed:':type==='bopv'?'gpvBopvDismissed:':buzonDismissKey('')}
+// ---- Iniciativas importantes (hasta 3 por parlamentario, en la pestaña «Importantes» del Excel) ----
+const MAX_IMPORTANTES=3;
+async function loadRemoteImportantes(){
+ try{const data=await apiJsonp('listar_importantes');return data&&data.ok&&Array.isArray(data.importantes)?data.importantes:null}catch(e){console.warn('No se pudieron cargar las importantes:',e);return null}
+}
+function importanteKey(x){return String(x.expediente||'').trim()||('T:'+normPerson(x.titulo||'').slice(0,120))}
+// Todas las marcas conocidas (de todo el grupo), con mis cambios pendientes aplicados encima.
+function importantesList(){
+ const me=currentPersonName(),meN=normPerson(me);
+ let out=(remoteImportantes||[]).filter(x=>x&&x.clave&&x.parlamentario);
+ for(const e of myOutbox()){
+  if(e.kind!=='importante')continue;
+  out=out.filter(x=>!(normPerson(x.parlamentario)===meN&&x.clave===e.target));
+  if(e.op==='add')out.push({parlamentario:me,clave:e.target,titulo:(e.local&&e.local.titulo)||''});
+ }
+ return out;
+}
+function myImportantes(){const meN=normPerson(currentPersonName());return importantesList().filter(x=>normPerson(x.parlamentario)===meN)}
+function samePersonLabel(a,b){return normPerson(canonicalGroupPerson(a||''))===normPerson(canonicalGroupPerson(b||''))}
+function importanteOwner(x){const k=importanteKey(x);return importantesList().find(i=>i.clave===k&&(!x.parlamentario||samePersonLabel(i.parlamentario,x.parlamentario)))||null}
+function canMarkImportante(x){return !isPrensa()&&!isEquipo()&&!!x.parlamentario&&isOwnPersonLabel(x.parlamentario)}
+function toggleImportante(x){
+ const k=importanteKey(x),mine=myImportantes(),on=mine.some(i=>i.clave===k);
+ if(!on&&mine.length>=MAX_IMPORTANTES){showToast(`Ya tienes ${MAX_IMPORTANTES} importantes; quita una para marcar esta.`,null,'error');return}
+ queueWrite('importante',on?'remove':'add',k,{action:on?'desmarcar_importante':'marcar_importante',usuario:currentPersonName(),clave:k,titulo:String(x.titulo||'').slice(0,300)},{titulo:x.titulo});
+ showToast(on?'Quitada de importantes':'Marcada como importante');scheduleRender();
+}
 function itemDismissed(type,x){
  const ids=dismissalIds(x),prefix=dismissalLocalPrefix(type),oldPrefix=oldDismissalPrefix(type);
  for(const id of ids){
@@ -628,7 +666,7 @@ function applyRemoteUserState(remoteTasks,remoteDiscards){
 }
 async function refreshRemoteUserState(){
  if(remoteRefreshBusy||!session?.user)return;remoteRefreshBusy=true;
- try{const [remoteTasks,remoteDiscards]=await Promise.all([loadRemoteTasks(),loadRemoteDismissals()]);const beforeTasks=JSON.stringify(tasks),beforeDiscards=[...remoteDismissed].sort().join('|');applyRemoteUserState(remoteTasks,remoteDiscards);if(beforeTasks!==JSON.stringify(tasks)||beforeDiscards!==[...remoteDismissed].sort().join('|'))scheduleRender()}finally{remoteRefreshBusy=false}
+ try{const [remoteTasks,remoteDiscards,imp]=await Promise.all([loadRemoteTasks(),loadRemoteDismissals(),loadRemoteImportantes()]);const beforeImp=JSON.stringify(remoteImportantes);if(Array.isArray(imp))remoteImportantes=imp;if(beforeImp!==JSON.stringify(remoteImportantes))scheduleRender();const beforeTasks=JSON.stringify(tasks),beforeDiscards=[...remoteDismissed].sort().join('|');applyRemoteUserState(remoteTasks,remoteDiscards);if(beforeTasks!==JSON.stringify(tasks)||beforeDiscards!==[...remoteDismissed].sort().join('|'))scheduleRender()}finally{remoteRefreshBusy=false}
 }
 function taskPayload(action,task){return {action,id:String(task.id),parlamentario:currentPersonName(),tarea:task.title,area:task.area||'',prioridad:task.priority||'Pronto',fecha:task.when||'Sin fecha',estado:task.done?'Hecho':'Pendiente'}}
 function persistTask(task){return queueWrite('task','create',task.id,taskPayload('crear_tarea',task),{...task})}
@@ -1900,6 +1938,7 @@ function niHome(){
  const weekSec=`<section class="ni-section"><div class="wrap">${niSectionHead('Próximos días',week.length?`${niCount(week.length,'cita','citas')} esta semana`:'Semana tranquila',`<button type="button" class="ni-link" data-tab="Agenda">Ver todo ${ico('arrowRight',16)}</button>`)}${week.length?`<div class="ni-grid two">${week.slice(0,6).map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas en los próximos 7 días','')}<div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
  const dlSec=deadlines.length?`<section class="ni-section" id="ni-vencimientos"><div class="wrap">${niSectionHead('Vencimientos','Plazos de esta semana')}<div class="ni-grid two">${deadlines.slice(0,8).map(x=>{const who=String(x.detail||'').split(':')[0];return `<article class="ni-card ni-event">${niDateBlock(x.event_date,'danger')}<div class="ni-event-body"><div class="ni-tags"><span class="ni-tag danger">${esc(x.organ_activity||'Plazo')}</span></div><h3>${esc(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</h3>${niSeesAll()&&who?`<div class="ni-meta"><span>${ico('user',15)}${esc(who)}</span></div>`:''}${initiativeLinkHTMLByTitle(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</div></article>`}).join('')}</div></div></section>`:'';
 
+ const impSec=niImportantesHome();
  const taskSec=taskUserEnabled()?`<section class="ni-section"><div class="wrap">${homeTasks()}</div></section>`:'';
  const radarSec=(!isPrensa()&&!isEquipo())?radarHome():'';
  const radarWrap=(!isPrensa()&&!isEquipo())?`<section class="ni-section"><div class="wrap">${niSectionHead('Radar',radarSec?'Lo de hoy':'Nada nuevo hoy',`<button type="button" class="ni-link" data-tab="Radar">Todo el radar ${ico('arrowRight',16)}</button>`)}${radarSec}</div></section>`:'';
@@ -1910,9 +1949,21 @@ function niHome(){
   const items=niMiAgenda().filter(x=>inOtros||category(x)!=='Otros');
   const list=items.filter(x=>inDia?x.event_date===inDia:x.event_date.startsWith(inMes));
   const calSec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Agenda','Calendario',vistaSeg)}<div class="ni-grid" style="margin-top:16px">${niMonthGrid(items,inMes,inDia,'in')}<div><p class="ni-count">${inDia?`<b>${esc(niRelDay(inDia))}</b>`:`<b>Todo ${NI_MESES_LARGOS[Number(inMes.slice(5))-1]}</b>`} · ${niCount(list.length,'cita','citas')}</p>${list.length?`<div class="ni-grid two">${list.map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas','Elige otro día en el calendario.')}</div></div><div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
-  return hero+calSec+dlSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+  return hero+calSec+impSec+dlSec+taskSec+radarWrap+'<div style="height:12px"></div>';
  }
- return hero+todaySec.replace(niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`),niSectionHead('Hoy','Agenda de hoy',vistaSeg))+dlSec+weekSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+ return hero+todaySec.replace(niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`),niSectionHead('Hoy','Agenda de hoy',vistaSeg))+impSec+dlSec+weekSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+}
+
+// Bloque del Inicio: las iniciativas importantes (las mías; en administración, las de todo el grupo).
+function niImportantesHome(){
+ if(isPrensa()||isEquipo())return '';
+ const data=niInitiativeData(),all=niSeesAll();
+ const imp=data.filter(x=>{const o=importanteOwner(x);return o&&(all||normPerson(o.parlamentario)===normPerson(currentPersonName()))});
+ const own=data.some(canMarkImportante);
+ if(!imp.length&&!own)return '';
+ const action=`<button type="button" class="ni-link" data-tab="Iniciativas">Iniciativas ${ico('arrowRight',16)}</button>`;
+ const body=imp.length?`<div class="ni-grid two">${imp.map(niInitCard).join('')}</div>`:niEmpty('Aún no has marcado ninguna',`Pulsa ☆ en hasta ${MAX_IMPORTANTES} de tus iniciativas para tenerlas siempre a mano.`);
+ return `<section class="ni-section"><div class="wrap">${niSectionHead('Importantes',all?'Importantes del grupo':'Tus iniciativas importantes',action)}${body}</div></section>`;
 }
 
 // ---- Agenda ----
@@ -1979,7 +2030,9 @@ function niInitCard(x){
   x.respuesta?`<a href="${esc(x.respuesta)}" target="_blank" rel="noopener">${ico('check',15)}Ver respuesta</a>`:'',
   x.fuente==='asg'?initiativeLinkHTMLByTitle(x.titulo,'Ver iniciativa'):''
  ].filter(Boolean).join('');
- return `<article class="ni-card ni-init"><div class="ni-tags"><span class="ni-tag electric">${esc(x.tipo)}</span><span class="ni-tag ${estadoTone}">${esc(x.estado)}</span></div><h3>${esc(x.titulo)}</h3>${meta?`<div class="ni-meta">${meta}</div>`:''}${links?`<div class="ni-actions">${links}</div>`:''}</article>`;
+ const imp=importanteOwner(x),puede=canMarkImportante(x);
+ const star=puede?`<button type="button" class="ni-star press ${imp?'on':''}" data-ni-imp="${esc(importanteKey(x))}" data-ni-imp-p="${esc(x.parlamentario||'')}" aria-pressed="${!!imp}" title="${imp?'Quitar de importantes':'Marcar como importante'}">${imp?'★':'☆'}</button>`:'';
+ return `<article class="ni-card ni-init ${imp?'imp':''}">${star}<div class="ni-tags">${imp?`<span class="ni-tag star">★ Importante</span>`:''}<span class="ni-tag electric">${esc(x.tipo)}</span><span class="ni-tag ${estadoTone}">${esc(x.estado)}</span></div><h3>${esc(x.titulo)}</h3>${meta?`<div class="ni-meta">${meta}</div>`:''}${links?`<div class="ni-actions">${links}</div>`:''}</article>`;
 }
 function niIniciativas(){
  const data=niInitiativeData();
@@ -1999,8 +2052,12 @@ function niIniciativas(){
  const estadoChips=estados.map(e=>`<button type="button" class="ni-chip press ${niEstado===e?'active':''}" data-ni-estado="${esc(e)}">${esc(e)}<span class="n">${byEstado(e)}</span></button>`).join('');
  const persona=niSeesAll()&&people.length>1?`<select class="ni-select" id="niPersona" aria-label="Parlamentario">${['Todos',...people].map(p=>`<option value="${esc(p)}" ${niPersona===p?'selected':''}>${p==='Todos'?'Todos los parlamentarios':esc(p)}</option>`).join('')}</select>`:'';
  const orden=`<div class="ni-seg" role="tablist" aria-label="Orden"><button type="button" data-ni-orden="recientes" class="${niOrden==='recientes'?'active':''}">Recientes</button><button type="button" data-ni-orden="plazo" class="${niOrden==='plazo'?'active':''}">Plazo</button></div>`;
+ const impAll=data.filter(x=>importanteOwner(x)&&(niPersona==='Todos'||x.parlamentario===niPersona));
+ const impKeys=new Set(impAll.map(x=>x.parlamentario+'|'+importanteKey(x)));
+ list=list.filter(x=>!impKeys.has(x.parlamentario+'|'+importanteKey(x)));
+ const impBlock=impAll.length?`<p class="ni-filter-label" style="margin-top:18px">★ Importantes${niSeesAll()?' · todo el grupo':''}</p><div class="ni-grid two">${impAll.map(niInitCard).join('')}</div>`:'';
  const pend=list.filter(x=>x.estado==='Pendiente').length;
- return niPageHeader(niSeesAll()?'Iniciativas · todo el grupo':'Iniciativas','Lo que hemos registrado.','Busca por título o expediente y filtra por tipo, estado y parlamentario.')+`<div class="wrap"><div class="ni-filters"><div class="ni-search">${ico('search',20)}<input id="initiativeSearch" type="search" autocomplete="off" placeholder="Buscar por título, expediente…" value="${esc(initiativeSearch)}"></div><p class="ni-filter-label">Tipo</p><div class="ni-chips">${tipoChips}</div>${estados.length>1?`<p class="ni-filter-label">Estado</p><div class="ni-chips">${estadoChips}</div>`:''}<div class="ni-row">${persona}${orden}</div></div><p class="ni-count"><b>${niCount(list.length,'iniciativa','iniciativas')}</b>${pend?` · ${niCount(pend,'pendiente','pendientes')}`:''}</p>${list.length?`<div class="ni-grid two">${list.slice(0,200).map(niInitCard).join('')}</div>${list.length>200?`<p class="ni-count">Se muestran 200 de ${list.length}. Afina con la búsqueda o los filtros.</p>`:''}`:niEmpty('No hay iniciativas con estos filtros','Prueba a quitar algún filtro o cambia la búsqueda.')}</div><div style="height:16px"></div>`;
+ return niPageHeader(niSeesAll()?'Iniciativas · todo el grupo':'Iniciativas','Lo que hemos registrado.','Busca por título o expediente y filtra por tipo, estado y parlamentario.')+`<div class="wrap"><div class="ni-filters"><div class="ni-search">${ico('search',20)}<input id="initiativeSearch" type="search" autocomplete="off" placeholder="Buscar por título, expediente…" value="${esc(initiativeSearch)}"></div><p class="ni-filter-label">Tipo</p><div class="ni-chips">${tipoChips}</div>${estados.length>1?`<p class="ni-filter-label">Estado</p><div class="ni-chips">${estadoChips}</div>`:''}<div class="ni-row">${persona}${orden}</div></div>${impBlock}<p class="ni-count"><b>${niCount(list.length,'iniciativa','iniciativas')}</b>${pend?` · ${niCount(pend,'pendiente','pendientes')}`:''}</p>${list.length?`<div class="ni-grid two">${list.slice(0,200).map(niInitCard).join('')}</div>${list.length>200?`<p class="ni-count">Se muestran 200 de ${list.length}. Afina con la búsqueda o los filtros.</p>`:''}`:niEmpty('No hay iniciativas con estos filtros','Prueba a quitar algún filtro o cambia la búsqueda.')}</div><div style="height:16px"></div>`;
 }
 
 // ---- Más ----
@@ -2042,6 +2099,7 @@ function niBind(){
  on('[data-ag-mes]',b=>{const [y,m]=agMes.split('-').map(Number);const d=new Date(y,m-1+Number(b.dataset.agMes),1);agMes=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;agDia=null;render()});
  on('[data-ni-tipo]',b=>{niTipo=b.dataset.niTipo;render()});
  on('[data-ni-estado]',b=>{niEstado=b.dataset.niEstado;render()});
+ on('[data-ni-imp]',b=>{const x=niInitiativeData().find(i=>importanteKey(i)===b.dataset.niImp&&(i.parlamentario||'')===b.dataset.niImpP);if(x)toggleImportante(x)});
  on('[data-ni-orden]',b=>{niOrden=b.dataset.niOrden;render()});
  on('[data-ni-go]',b=>{niEstado=b.dataset.niGo;niTipo='Todos';niPersona='Todos';initiativeSearch='';tab='Iniciativas';render()});
  const p=document.getElementById('niPersona');if(p)p.onchange=()=>{niPersona=p.value;render()};

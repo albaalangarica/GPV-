@@ -1,6 +1,8 @@
 const SPREADSHEET_ID = '1xUZ1Q7XDGQCw406Woy1imLppYszBJ9cEjk0__fmP3wU';
 const SHEET_TAREAS = 'Tareas';
 const SHEET_DESCARTES = 'Descartes_app';
+const SHEET_IMPORTANTES = 'Importantes';
+const MAX_IMPORTANTES = 3;
 const SHEET_AGENDA = 'Agenda'; // Ajusta este nombre si la pestaña real se llama de otra forma
 
 // Alias aceptados para cada columna de la Agenda (coinciden con los que ya lee index.html).
@@ -43,6 +45,8 @@ function doPost(e) {
     if (data.action === 'eliminar_tarea') return eliminarTarea(data);
     if (data.action === 'descartar_item') return guardarDescarte(data);
     if (data.action === 'restaurar_descarte') return restaurarDescarte(data);
+    if (data.action === 'marcar_importante') return marcarImportante(data);
+    if (data.action === 'desmarcar_importante') return desmarcarImportante(data);
     if (data.action === 'crear_evento') return conSincronizacion(crearEvento(data), 'agenda');
     if (data.action === 'actualizar_evento') return conSincronizacion(actualizarEvento(data), 'agenda');
     if (data.action === 'cancelar_evento') return conSincronizacion(cancelarEvento(data), 'agenda');
@@ -238,6 +242,77 @@ function buscarFilaDescarte(sheet, usuario, tipo, itemId) {
     ) return i + 2;
   }
   return null;
+}
+
+/* ============ INICIATIVAS IMPORTANTES ============ */
+// Cada parlamentario puede marcar hasta 3 iniciativas suyas como importantes.
+// Se guardan en la pestaña «Importantes»: Parlamentario | Clave | Título | Fecha.
+// La clave es el expediente (o el título si la iniciativa aún no tiene expediente).
+
+function marcarImportante(data) {
+  const usuario = String(data.usuario || '').trim();
+  const clave = String(data.clave || '').trim();
+  if (!usuario) throw new Error('Falta el usuario');
+  if (!clave) throw new Error('Falta la iniciativa');
+
+  const sheet = getImportantesSheet();
+  if (buscarFilaImportante(sheet, usuario, clave)) return jsonResponse({ ok: true, clave: clave });
+  const propias = listarImportantes().filter(function(x) {
+    return normalizarTexto(x.parlamentario) === normalizarTexto(usuario);
+  });
+  if (propias.length >= MAX_IMPORTANTES) {
+    return jsonResponse({ ok: false, error: 'Ya hay ' + MAX_IMPORTANTES + ' iniciativas importantes' });
+  }
+  sheet.appendRow([usuario, clave, String(data.titulo || '').trim(), fechaActual()]);
+  return jsonResponse({ ok: true, clave: clave });
+}
+
+function desmarcarImportante(data) {
+  const usuario = String(data.usuario || '').trim();
+  const clave = String(data.clave || '').trim();
+  if (!usuario) throw new Error('Falta el usuario');
+  if (!clave) throw new Error('Falta la iniciativa');
+
+  const sheet = getImportantesSheet();
+  const fila = buscarFilaImportante(sheet, usuario, clave);
+  if (fila) sheet.deleteRow(fila);
+  return jsonResponse({ ok: true, clave: clave });
+}
+
+// Se devuelven las de todos: cada uno ve las suyas y la administración las de todo el grupo.
+function listarImportantes() {
+  const sheet = getImportantesSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  return sheet.getRange(2, 1, lastRow - 1, 3).getDisplayValues()
+    .map(function(row) {
+      return { parlamentario: String(row[0] || '').trim(), clave: String(row[1] || '').trim(), titulo: String(row[2] || '').trim() };
+    })
+    .filter(function(x) { return x.parlamentario && x.clave; });
+}
+
+function buscarFilaImportante(sheet, usuario, clave) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const rows = sheet.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
+  const targetUser = normalizarTexto(usuario);
+  for (let i = 0; i < rows.length; i++) {
+    if (normalizarTexto(rows[i][0]) === targetUser && String(rows[i][1] || '').trim() === clave) return i + 2;
+  }
+  return null;
+}
+
+function getImportantesSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(SHEET_IMPORTANTES);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_IMPORTANTES);
+    sheet.getRange(1, 1, 1, 4).setValues([['Parlamentario', 'Clave', 'Título', 'Fecha']]);
+    sheet.setFrozenRows(1);
+    // La clave (expediente) se guarda como texto para que Sheets no la transforme.
+    sheet.getRange('B:B').setNumberFormat('@');
+  }
+  return sheet;
 }
 
 /* ============ Utilidades ============ */
@@ -535,6 +610,10 @@ function doGet(e) {
       return params.callback ? jsonpResponse(params.callback, result) : jsonResponse(result);
     }
     if (params.action === 'ics') return icsResponse(params.ics);
+    if (params.action === 'listar_importantes') {
+      const result = { ok: true, importantes: listarImportantes() };
+      return params.callback ? jsonpResponse(params.callback, result) : jsonResponse(result);
+    }
     if (params.action === 'listar_tareas') {
       const result = { ok: true, tareas: listarTareas(params.usuario) };
       return params.callback ? jsonpResponse(params.callback, result) : jsonResponse(result);
