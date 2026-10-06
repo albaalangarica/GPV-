@@ -9,8 +9,9 @@
  * instalarSincronizacion().
  */
 
-const SUPABASE_URL = 'https://dnukecumlmfoomqbnkuw.supabase.co';
-const SUPABASE_KEY = 'PEGA_AQUI_LA_CLAVE_PUBLICA';
+// Función de servidor de Supabase que guarda cada pestaña. No necesita claves de Supabase:
+// solo el token secreto, que se pega aquí en Apps Script y nunca en GitHub.
+const SINCRONIZAR_URL = 'https://dnukecumlmfoomqbnkuw.supabase.co/functions/v1/sincronizar';
 const SUPABASE_TOKEN = 'PEGA_AQUI_EL_TOKEN';
 
 const ID_EXCEL_PRINCIPAL = '1xUZ1Q7XDGQCw406Woy1imLppYszBJ9cEjk0__fmP3wU';
@@ -93,11 +94,10 @@ function sincronizarClaveInterna(clave, abiertos, forzar) {
   const props = PropertiesService.getScriptProperties();
   if (!forzar && props.getProperty('huella_' + clave) === huella) return false;
 
-  const respuesta = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/rpc/sincronizar_contenido', {
+  const respuesta = UrlFetchApp.fetch(SINCRONIZAR_URL, {
     method: 'post',
     contentType: 'application/json',
-    headers: { apikey: SUPABASE_KEY },
-    payload: JSON.stringify({ p_token: SUPABASE_TOKEN, p_clave: clave, p_filas: filas }),
+    payload: JSON.stringify({ token: SUPABASE_TOKEN, clave: clave, filas: filas }),
     muteHttpExceptions: true
   });
   if (respuesta.getResponseCode() >= 300) {

@@ -540,6 +540,28 @@ function openEventModal(id=null){
   showToast('Cancelando…',null,'info');const ok=await cancelarEventoRemote(id);saveToast(ok,'Evento cancelado');
  };
 }
+// ---- Datos desde el servidor ----
+// El script de Google copia el Excel en Supabase y la función de servidor "datos" lo entrega
+// todo en una sola respuesta. La página no lleva ninguna clave. Si el servidor no responde o
+// falta una pestaña, se lee el Excel como antes.
+const DATOS_URL='https://dnukecumlmfoomqbnkuw.supabase.co/functions/v1/datos';
+let contentSnapshotPromise=null,contentSnapshotAt=0;
+function contentSnapshot(){
+ if(contentSnapshotPromise&&Date.now()-contentSnapshotAt<5000)return contentSnapshotPromise;
+ contentSnapshotAt=Date.now();
+ const p=sheetFetch(DATOS_URL)
+  .then(r=>{if(!r.ok)throw new Error('servidor '+r.status);return r.json()})
+  .then(d=>(d&&d.contenido)||{});
+ contentSnapshotPromise=p;p.catch(()=>{if(contentSnapshotPromise===p)contentSnapshotPromise=null});
+ return p;
+}
+async function sheetRowsFor(clave,csvUrl){
+ try{const snap=await contentSnapshot();const e=snap[clave];if(e&&Array.isArray(e.filas)&&e.filas.length)return e.filas.map(r=>Array.isArray(r)?r.map(v=>String(v??'')):[])}
+ catch(e){console.warn('Servidor de datos no disponible, se lee el Excel',e)}
+ const sep=csvUrl.includes('?')?'&':'?';
+ const r=await sheetFetch(csvUrl+sep+'_='+Date.now());if(!r.ok)throw new Error(clave+' '+r.status);
+ return csvRows(await r.text());
+}
 function sheetFetch(url,timeoutMs=12000){
  const ctrl=typeof AbortController!=='undefined'?new AbortController():null;const timer=ctrl?setTimeout(()=>ctrl.abort(),timeoutMs):null;
  return fetch(url,{cache:'no-store',signal:ctrl?.signal}).finally(()=>{if(timer)clearTimeout(timer)});
@@ -553,8 +575,8 @@ const PROVISIONAL_GROUP_START='2026-09-23';
 function isGroupAgendaItem(x){const explicit=explicitAgendaCategory(x);if(explicit)return explicit==='Grupo';const o=normPerson(x.organ_activity||''),d=normPerson(x.detail||'');return o.includes('reunion de grupo')||d.includes('reunion de grupo')||o.includes('grupo popular')||d.includes('grupo popular')}
 function weekMondayISO(iso){const d=new Date(iso+'T12:00:00');const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10)}
 function withProvisionalGroupMeetings(base){const items=[...base];const realWeeks=new Set(items.filter(isGroupAgendaItem).map(x=>weekMondayISO(x.event_date)));const start=new Date(PROVISIONAL_GROUP_START+'T12:00:00');const horizon=new Date();horizon.setHours(12,0,0,0);horizon.setDate(horizon.getDate()+365);for(let d=new Date(start);d<=horizon;d.setDate(d.getDate()+7)){const iso=d.toISOString().slice(0,10);if(realWeeks.has(weekMondayISO(iso)))continue;items.push({event_date:iso,day_name:'Miércoles',event_time:'Hora por confirmar',type:'Reunión',organ_activity:'Reunión de grupo (provisional)',location:'Zoom / por confirmar',detail:'Fecha provisional · reunión semanal de grupo',agenda_link:'',expediente:'',expediente_link:'',parlamentario:'',area_label:'',group_zoom:GROUP_ZOOM_URL,provisional:true})}return items}
-async function loadAgendaFromSheet(){try{const sep=AGENDA_CSV_URL.includes('?')?'&':'?';const r=await sheetFetch(AGENDA_CSV_URL+sep+'_='+Date.now());if(!r.ok)throw new Error('CSV '+r.status);const data=mapAgendaRows(csvRows(await r.text()));if(data.length)return withProvisionalGroupMeetings(data)}catch(e){}return withProvisionalGroupMeetings(await loadAgendaGViz())}
-async function loadPlazos(){try{const r=await sheetFetch(PLAZOS_CSV_URL+'&_='+Date.now());if(!r.ok)throw new Error('plazos');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const full=n=>{const v=normPerson(n);if(v==='santi'||v==='santiago')return 'Santi López';if(v==='ainhoa')return 'Ainhoa Domaica';if(v==='ana')return 'Ana Morales';if(v==='alvaro')return 'Álvaro Gotxi';if(v==='muriel')return 'Muriel Larrea';if(v==='laura')return 'Laura Garrido';if(v==='javier')return 'Javier de Andrés';return String(n||'').trim()};return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()&&normPerson(r[ix('Estado')]||'Pendiente')!=='resuelto').flatMap(r=>{const fecha=sheetDateToISO(r[ix('Plazo enmiendas')]);if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))return[];return String(r[ix('Responsable')]||'').split('/').map(x=>full(x.trim())).filter(Boolean).map(who=>({event_date:fecha,event_time:'Todo el día',type:'Vencimiento',organ_activity:'Plazo de enmiendas',location:'Parlamento Vasco',detail:who+': '+String(r[ix('Iniciativa')]||'').trim()}))})}catch(e){throw e}}
+async function loadAgendaFromSheet(){try{const sep=AGENDA_CSV_URL.includes('?')?'&':'?';const r=await sheetRowsFor('agenda',AGENDA_CSV_URL);const data=mapAgendaRows(r);if(data.length)return withProvisionalGroupMeetings(data)}catch(e){}return withProvisionalGroupMeetings(await loadAgendaGViz())}
+async function loadPlazos(){try{const r=await sheetRowsFor('plazos',PLAZOS_CSV_URL);const rows=r;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const full=n=>{const v=normPerson(n);if(v==='santi'||v==='santiago')return 'Santi López';if(v==='ainhoa')return 'Ainhoa Domaica';if(v==='ana')return 'Ana Morales';if(v==='alvaro')return 'Álvaro Gotxi';if(v==='muriel')return 'Muriel Larrea';if(v==='laura')return 'Laura Garrido';if(v==='javier')return 'Javier de Andrés';return String(n||'').trim()};return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()&&normPerson(r[ix('Estado')]||'Pendiente')!=='resuelto').flatMap(r=>{const fecha=sheetDateToISO(r[ix('Plazo enmiendas')]);if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))return[];return String(r[ix('Responsable')]||'').split('/').map(x=>full(x.trim())).filter(Boolean).map(who=>({event_date:fecha,event_time:'Todo el día',type:'Vencimiento',organ_activity:'Plazo de enmiendas',location:'Parlamento Vasco',detail:who+': '+String(r[ix('Iniciativa')]||'').trim()}))})}catch(e){throw e}}
 function refreshAgendaFromSheet(){return refreshAllData(true,['agenda'])}
 // Al volver a la app se actualiza todo una sola vez (visibilitychange y focus llegan juntos en el móvil).
 let lastResume=0;
@@ -563,7 +585,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 
 function initiativeType(expediente){const e=String(expediente||'').replaceAll('/','\\');if(e.includes('\\10\\07\\02\\'))return 'Solicitud de información';if(e.includes('\\10\\05\\03\\'))return 'Pregunta escrita';if(e.includes('\\10\\05\\01\\'))return 'Pregunta oral';return 'Iniciativa'}
-async function loadInitiatives(){try{const r=await sheetFetch(INICIATIVAS_CSV_URL);if(!r.ok)throw new Error('sheet');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const firstIx=(...names)=>{for(const n of names){const i=ix(n);if(i>=0)return i}return-1};
+async function loadInitiatives(){try{const r=await sheetRowsFor('iniciativas',INICIATIVAS_CSV_URL);const rows=r;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const firstIx=(...names)=>{for(const n of names){const i=ix(n);if(i>=0)return i}return-1};
  const links={'13\\10\\07\\02\\03457':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:90936,N','13\\10\\07\\02\\03684':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:91293,N','13\\10\\07\\02\\03710':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:91330,N'};
  const responseLinks={
   '13\\10\\07\\02\\03413':'https://mail.google.com/mail/#all/1a06736f164735ce',
@@ -578,13 +600,13 @@ async function loadInitiatives(){try{const r=await sheetFetch(INICIATIVAS_CSV_UR
  return rows.slice(1).filter(r=>String(r[ix('Expediente')]||'').trim()).map(r=>{const expediente=r[ix('Expediente')]||'';return {parlamentario:r[ix('Parlamentario')]||'',expediente,titulo:r[ix('Título')]||'',situacion:r[ix('Situación')]||'',enlace:asUrl(enlIx>=0?r[enlIx]:'')||links[expediente]||'',plazo:plazos[expediente]||'',tipo:initiativeType(expediente),respuestaEnlace:asUrl(respIx>=0?r[respIx]:'')||responseLinks[expediente]||'',fechaRespuesta:fechaRespIx>=0?r[fechaRespIx]||'':''}});}catch(e){throw e}}
 function mapAssignedRows(rows){if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()).map(r=>({parlamentario:String(r[ix('Parlamentario')]||'').trim(),tipo:String(r[ix('Tipo')]||'').trim(),titulo:String(r[ix('Iniciativa')]||'').trim(),autor:String(r[ix('Autor')]||'').trim(),vencimiento:String(r[ix('Vencimiento')]||'').trim()}))}
 function loadAssignedGViz(){return new Promise((resolve,reject)=>{const cb='gpvAssigned'+Date.now();const script=document.createElement('script');let done=false;const finish=(err,data)=>{if(done)return;done=true;delete window[cb];script.remove();err?reject(err):resolve(data)};window[cb]=res=>{try{const cols=(res.table?.cols||[]).map(c=>c.label||'');const rows=[cols,...(res.table?.rows||[]).map(r=>(r.c||[]).map(c=>c?(c.f??c.v??'') : ''))];finish(null,mapAssignedRows(rows))}catch(e){finish(e)}};script.src=ASIGNADAS_GVIZ_URL+'&tqx=responseHandler:'+cb;script.onerror=()=>finish(new Error('No se pudieron cargar las asignadas'));document.head.appendChild(script);setTimeout(()=>finish(new Error('Tiempo de espera agotado')),12000)})}
-async function loadAssigned(){try{const r=await sheetFetch(ASIGNADAS_CSV_URL);if(!r.ok)throw new Error('asignadas');const data=mapAssignedRows(csvRows(await r.text()));if(data.length)return data}catch(e){}try{return await loadAssignedGViz()}catch(e){throw e}}
-async function loadAccesses(){try{const r=await sheetFetch(ACCESOS_CSV_URL);if(!r.ok)throw new Error('accesos');const rows=csvRows(await r.text());const hi=rows.findIndex(r=>String(r[0]||'').trim()==='Recurso');if(hi<0)return[];const h=rows[hi].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(hi+1).filter(r=>String(r[ix('Recurso')]||'').trim()).map((r,i)=>({id:'acc-'+i,title:String(r[ix('Recurso')]||'').trim(),desc:String(r[ix('Descripción')]||'').trim(),url:String(r[ix('URL web')]||'').trim()})).filter(x=>x.title);}catch(e){throw e}}
+async function loadAssigned(){try{const r=await sheetRowsFor('asignadas',ASIGNADAS_CSV_URL);const data=mapAssignedRows(r);if(data.length)return data}catch(e){}try{return await loadAssignedGViz()}catch(e){throw e}}
+async function loadAccesses(){try{const r=await sheetRowsFor('accesos',ACCESOS_CSV_URL);const rows=r;const hi=rows.findIndex(r=>String(r[0]||'').trim()==='Recurso');if(hi<0)return[];const h=rows[hi].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(hi+1).filter(r=>String(r[ix('Recurso')]||'').trim()).map((r,i)=>({id:'acc-'+i,title:String(r[ix('Recurso')]||'').trim(),desc:String(r[ix('Descripción')]||'').trim(),url:String(r[ix('URL web')]||'').trim()})).filter(x=>x.title);}catch(e){throw e}}
 
 async function loadNewDocuments(){try{
- const r=await sheetFetch(NUEVOS_DOCUMENTOS_CSV_URL+'&_='+Date.now());
- if(!r.ok)throw new Error('new-documents');
- const rows=csvRows(await r.text());if(!rows.length)return[];
+ const r=await sheetRowsFor('nuevos_documentos',NUEVOS_DOCUMENTOS_CSV_URL);
+ 
+ const rows=r;if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
  return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map((r,i)=>({
   id:'doc-'+i,
@@ -596,9 +618,9 @@ async function loadNewDocuments(){try{
  })).filter(x=>!x.visible||/^(mostrar|s[ií]|si|sí|true|1|x)$/i.test(x.visible));
 }catch(e){throw e}}
 async function loadPersonalDocuments(){try{
- const r=await sheetFetch(DOCUMENTOS_PERSONALES_CSV_URL+'&_='+Date.now());
- if(!r.ok)throw new Error('personal-documents');
- const rows=csvRows(await r.text());if(!rows.length)return[];
+ const r=await sheetRowsFor('documentos_personales',DOCUMENTOS_PERSONALES_CSV_URL);
+ 
+ const rows=r;if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
  return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map((r,i)=>({
   id:'pdoc-'+i,
@@ -610,9 +632,9 @@ async function loadPersonalDocuments(){try{
  }));
 }catch(e){throw e}}
 async function loadPendientes(){try{
- const r=await sheetFetch(PENDIENTES_CSV_URL+'&_='+Date.now());
- if(!r.ok)throw new Error('pendientes');
- const rows=csvRows(await r.text());if(!rows.length)return[];
+ const r=await sheetRowsFor('pendientes',PENDIENTES_CSV_URL);
+ 
+ const rows=r;if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
  return rows.slice(1).filter(r=>String(r[ix('Pendiente')]||'').trim()).map((r,i)=>({
   id:'pend-'+i,
@@ -626,9 +648,9 @@ async function loadPendientes(){try{
  }));
 }catch(e){throw e}}
 async function loadAlbaCosas(){try{
- const r=await sheetFetch(ALBA_COSAS_CSV_URL+'&_='+Date.now());
- if(!r.ok)throw new Error('alba-cosas');
- const rows=csvRows(await r.text());if(!rows.length)return[];
+ const r=await sheetRowsFor('alba_cosas',ALBA_COSAS_CSV_URL);
+ 
+ const rows=r;if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
  return rows.slice(1).filter(r=>String(r[ix('Asunto')]||'').trim()).map((r,i)=>({
   id:String(r[ix('ID')]||stableItemId('ac',[r[ix('Fecha asunto')],r[ix('Asunto')],r[ix('Remitente')]])).trim(),
@@ -655,9 +677,9 @@ async function loadAlbaCosas(){try{
  }));
 }catch(e){throw e}}
 async function loadSantiCosas(){try{
- const r=await sheetFetch(SANTI_COSAS_CSV_URL+'&_='+Date.now());
- if(!r.ok)throw new Error('santi-cosas');
- const rows=csvRows(await r.text());if(!rows.length)return[];
+ const r=await sheetRowsFor('santi_cosas',SANTI_COSAS_CSV_URL);
+ 
+ const rows=r;if(!rows.length)return[];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
  return rows.slice(1).filter(r=>String(r[ix('Asunto')]||'').trim()).map((r,i)=>({
   id:String(r[ix('ID')]||stableItemId('sc',[r[ix('Fecha asunto')],r[ix('Asunto')],r[ix('Remitente')]])).trim(),
@@ -683,8 +705,8 @@ async function loadSantiCosas(){try{
   observaciones:String(r[ix('Observaciones')]||'').trim()
  }));
 }catch(e){throw e}}
-async function loadRadar(){try{const r=await sheetFetch(RADAR_CSV_URL);if(!r.ok)throw new Error('radar');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map((r,i)=>({legacyId:'radar-'+(r[ix('Fecha')]||'sin-fecha')+'-'+i,id:stableItemId('radar',[r[ix('Fecha')],r[ix('Título')]]),dismissIds:[stableItemId('radar',[r[ix('Fecha')],r[ix('Parlamentario')],r[ix('Título')],r[ix('URL')]])],fecha:sheetDateToISO(r[ix('Fecha')]),parlamentario:r[ix('Parlamentario')]||'',titulo:r[ix('Título')]||'',resumen:r[ix('Hechos')]||'',fuente:r[ix('Fuente')]||'',interpretacion:r[ix('Interpretación')]||'',relevancia:r[ix('Relevancia política')]||'',actuacion:r[ix('Actuación propuesta')]||'',url:r[ix('URL')]||'',area:'Otros'})).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){throw e}}
-async function loadBopv(){try{const sep=BOPV_CSV_URL.includes('?')?'&':'?';const r=await sheetFetch(BOPV_CSV_URL+sep+'_='+Date.now());if(!r.ok)throw new Error('bopv');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Entrada')]||'').trim()).map((r,i)=>({legacyId:'bopv-'+(r[ix('Expediente / BOPV')]||i),id:stableItemId('bopv',String(r[ix('Expediente / BOPV')]||'').trim()?[r[ix('Expediente / BOPV')]]:[r[ix('Día de entrada')],r[ix('Entrada')]]),dismissIds:[stableItemId('bopv',[r[ix('Día de entrada')],r[ix('Entrada')],r[ix('Expediente / BOPV')],r[ix('Enlace oficial')],r[ix('Parlamentario')]])],fecha:sheetDateToISO(r[ix('Día de entrada')]),area:r[ix('Área / Departamento')]||'',responsable:r[ix('Parlamentario')]||'',categoria:r[ix('Clasificación')]||'BOPV',motivo:r[ix('Motivo / seguimiento')]||'',estado:r[ix('Estado')]||'',expediente:r[ix('Expediente / BOPV')]||'',url:r[ix('Enlace oficial')]||'',asunto:r[ix('Entrada')]||''})).filter(x=>String(x.estado||'Activo').toLowerCase()!=='inactivo'&&/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){throw e}}
+async function loadRadar(){try{const r=await sheetRowsFor('radar',RADAR_CSV_URL);const rows=r;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map((r,i)=>({legacyId:'radar-'+(r[ix('Fecha')]||'sin-fecha')+'-'+i,id:stableItemId('radar',[r[ix('Fecha')],r[ix('Título')]]),dismissIds:[stableItemId('radar',[r[ix('Fecha')],r[ix('Parlamentario')],r[ix('Título')],r[ix('URL')]])],fecha:sheetDateToISO(r[ix('Fecha')]),parlamentario:r[ix('Parlamentario')]||'',titulo:r[ix('Título')]||'',resumen:r[ix('Hechos')]||'',fuente:r[ix('Fuente')]||'',interpretacion:r[ix('Interpretación')]||'',relevancia:r[ix('Relevancia política')]||'',actuacion:r[ix('Actuación propuesta')]||'',url:r[ix('URL')]||'',area:'Otros'})).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){throw e}}
+async function loadBopv(){try{const sep=BOPV_CSV_URL.includes('?')?'&':'?';const r=await sheetRowsFor('bopv',BOPV_CSV_URL);const rows=r;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Entrada')]||'').trim()).map((r,i)=>({legacyId:'bopv-'+(r[ix('Expediente / BOPV')]||i),id:stableItemId('bopv',String(r[ix('Expediente / BOPV')]||'').trim()?[r[ix('Expediente / BOPV')]]:[r[ix('Día de entrada')],r[ix('Entrada')]]),dismissIds:[stableItemId('bopv',[r[ix('Día de entrada')],r[ix('Entrada')],r[ix('Expediente / BOPV')],r[ix('Enlace oficial')],r[ix('Parlamentario')]])],fecha:sheetDateToISO(r[ix('Día de entrada')]),area:r[ix('Área / Departamento')]||'',responsable:r[ix('Parlamentario')]||'',categoria:r[ix('Clasificación')]||'BOPV',motivo:r[ix('Motivo / seguimiento')]||'',estado:r[ix('Estado')]||'',expediente:r[ix('Expediente / BOPV')]||'',url:r[ix('Enlace oficial')]||'',asunto:r[ix('Entrada')]||''})).filter(x=>String(x.estado||'Activo').toLowerCase()!=='inactivo'&&/^\d{4}-\d{2}-\d{2}$/.test(x.fecha));}catch(e){throw e}}
 
 
 
@@ -782,7 +804,7 @@ function areaClass(area){const a=normPerson(area);if(a.includes('justicia')||a.i
 
 function normPerson(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
 function currentUserConfig(){const email=(session?.user?.email||'').trim().toLowerCase();return PEOPLE[email]||null}
-async function loadBancoDatos(){try{const r=await sheetFetch(BANCO_DATOS_CSV_URL);if(!r.ok)throw new Error('banco');const rows=csvRows(await r.text());if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const ixMostrar=ix('Mostrar');return rows.slice(1).filter(r=>String(r[ix('Dato')]||'').trim()).map((r,i)=>({id:'bd-'+i,departamento:r[ix('Departamento')]||'',area:r[ix('Área')]||'',dato:r[ix('Dato')]||'',explicacion:r[ix('Explicación del dato')]||'',fecha:r[ix('Fecha del Dato')]||'',fuente:r[ix('Fuente')]||'',url:r[ix('URL si hay')]||'',mostrar:ixMostrar>=0?String(r[ixMostrar]||'').trim().toLowerCase():''})).filter(x=>!/^#error!?$/i.test(x.dato));}catch(e){throw e}}
+async function loadBancoDatos(){try{const r=await sheetRowsFor('banco_datos',BANCO_DATOS_CSV_URL);const rows=r;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const ixMostrar=ix('Mostrar');return rows.slice(1).filter(r=>String(r[ix('Dato')]||'').trim()).map((r,i)=>({id:'bd-'+i,departamento:r[ix('Departamento')]||'',area:r[ix('Área')]||'',dato:r[ix('Dato')]||'',explicacion:r[ix('Explicación del dato')]||'',fecha:r[ix('Fecha del Dato')]||'',fuente:r[ix('Fuente')]||'',url:r[ix('URL si hay')]||'',mostrar:ixMostrar>=0?String(r[ixMostrar]||'').trim().toLowerCase():''})).filter(x=>!/^#error!?$/i.test(x.dato));}catch(e){throw e}}
 function ensureBancoDatosLoaded(){if(bancoDatosLoaded||bancoDatosLoading)return;const cached=readDataCache('bancoDatos');if(cached){bancoDatosItems=cached.data;bancoDatosLoaded=true}bancoDatosLoading=true;loadBancoDatos().then(items=>{const changed=JSON.stringify(items)!==JSON.stringify(bancoDatosItems);bancoDatosItems=items;writeDataCache('bancoDatos',items);bancoDatosLoaded=true;if(changed&&tab==='Banco de Datos')scheduleRender()}).catch(e=>{console.warn('Banco de datos no disponible',e);if(!bancoDatosLoaded){bancoDatosLoaded=true;bancoDatosItems=[];sourceErrors.add('Banco de Datos');if(tab==='Banco de Datos')scheduleRender()}})}
 
 
@@ -1166,8 +1188,8 @@ const REPO_DESTACADOS=[
 const REPO_FOLDER_URL='https://drive.google.com/drive/folders/16WkkpsQcDCGFxNqmV8bH_7JFKzJRG_Nf';
 const REPO_INDEX_CSV_URL='https://docs.google.com/spreadsheets/d/1xUZ1Q7XDGQCw406Woy1imLppYszBJ9cEjk0__fmP3wU/gviz/tq?tqx=out:csv&headers=1&sheet=Repositorio_indice';
 async function loadRepoIndex(){
- const r=await sheetFetch(REPO_INDEX_CSV_URL+'&_='+Date.now(),20000);if(!r.ok)throw new Error('repositorio');
- const rows=csvRows(await r.text());if(!rows.length)return null;
+ const r=await sheetRowsFor('repositorio',REPO_INDEX_CSV_URL);
+ const rows=r;if(!rows.length)return null;
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n);
  if(ix('Título')<0||ix('Enlace')<0)return null; // la pestaña aún no existe
  return rows.slice(1).filter(r=>String(r[ix('Título')]||'').trim()).map(r=>({titulo:String(r[ix('Título')]||'').trim(),enlace:String(r[ix('Enlace')]||'').trim(),carpeta:ix('Carpeta')>=0?String(r[ix('Carpeta')]||'').trim():'',fecha:ix('Modificado')>=0?String(r[ix('Modificado')]||'').trim():'',tipo:ix('Tipo')>=0?String(r[ix('Tipo')]||'').trim():'',creado:ix('Creado')>=0?String(r[ix('Creado')]||'').trim():''}));
