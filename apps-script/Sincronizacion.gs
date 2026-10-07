@@ -88,7 +88,8 @@ function sincronizarClaveInterna(clave, abiertos, forzar) {
   const hoja = destino[1] ? libro.getSheetByName(destino[1]) : libro.getSheets()[0];
   if (!hoja) throw new Error('No existe la pestaña ' + destino[1]);
 
-  const filas = recortarFilas(hoja.getDataRange().getDisplayValues());
+  // filasConEnlaces (Enlaces.gs) recupera los enlaces escondidos tras textos como «Abrir ficha».
+  const filas = recortarFilas(filasConEnlaces(hoja));
   const json = JSON.stringify(filas);
   const huella = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, json, Utilities.Charset.UTF_8));
   const props = PropertiesService.getScriptProperties();
