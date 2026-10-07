@@ -127,8 +127,8 @@ button{font-family:inherit}
 /* Inicio compacto */
 .nh-top{background:var(--night);color:#fff}
 .nh-top .wrap{padding-top:14px;padding-bottom:16px}
-.nh-date{margin:0;font-size:13px;color:rgba(255,255,255,.65)}
-.nh-date b{color:#fff;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.nh-hello{margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--sky)}
+.nh-date{margin:4px 0 0;color:#fff;font-size:clamp(22px,6.6vw,30px);font-weight:900;letter-spacing:-.03em;line-height:1.08}
 .nh-pleno{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 14px;border-radius:12px;background:var(--electric);color:#fff;font-size:14px;font-weight:700;text-decoration:none}
 .nh-pleno span{margin-left:auto;white-space:nowrap}
 .nh-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
@@ -163,7 +163,7 @@ button{font-family:inherit}
 .nh-state{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--slate);white-space:nowrap}
 .nh-state.ok{color:var(--success)}
 .nh-state.warn{color:var(--danger)}
-@media (min-width:860px){.nh-cols{display:grid;grid-template-columns:3fr 2fr;gap:24px;align-items:start}.nh-date b{font-size:24px}}
+@media (min-width:860px){.nh-cols{display:grid;grid-template-columns:3fr 2fr;gap:24px;align-items:start}.nh-date{font-size:40px}}
 /* Iniciativas importantes */
 .ni-init{position:relative}
 .ni-init .ni-tags{padding-right:40px}
@@ -1866,7 +1866,7 @@ function niCount(n,uno,varios){return `${n} ${n===1?uno:varios}`}
 // ---- Estructura ----
 function niTopBar(){
  const ident=displayIdentity();
- return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><img class="ni-logo" src="logo-ppvasco-blanco.png?v=1" alt="PP Vasco" width="130" height="27"><span>Grupo Parlamentario</span></button>${niTopNav()}${niOrderTop()}<button type="button" class="ni-avatar press" data-tab="Mas" aria-label="Más opciones"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></button></div></header>`;
+ return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><img class="ni-logo" src="logo-ppvasco-blanco.png?v=1" alt="PP Vasco" width="130" height="27"><span>Grupo Parlamentario</span></button>${niTopNav()}<button type="button" class="ni-avatar press" data-tab="Mas" aria-label="Más opciones"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></button></div></header>`;
 }
 // En ordenador la navegación va en la cabecera (como NNGG); en móvil, en la barra inferior.
 function niTopNav(){
@@ -1994,7 +1994,7 @@ function niHome(){
   `<button type="button" class="nh-tile" data-tab="Radar"><b>${radarInWindow(1,true).length}</b><small>Radar hoy</small></button>`,
   `<button type="button" class="nh-tile" data-tab="Iniciativas"><b>${ico('document',20)}</b><small>Iniciativas</small></button>`
  ].filter(Boolean).slice(0,4).join('');
- const top=`<section class="nh-top"><div class="wrap"><p class="nh-date"><b>${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</b> · Hola, ${esc(first)}</p>${plenoLine}<div class="nh-tiles">${tiles}</div></div></section>`;
+ const top=`<section class="nh-top"><div class="wrap"><p class="nh-hello">Hola, ${esc(first)}</p><h1 class="nh-date">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</h1>${plenoLine}<div class="nh-tiles">${tiles}</div></div></section>`;
 
  // Agenda: Hoy · Mañana · Semana, en filas.
  const sets={hoy:today,manana:up.filter(x=>x.event_date===manana),semana:up.filter(x=>x.event_date>hoy&&x.event_date<=plusDaysISO(hoy,7))};
