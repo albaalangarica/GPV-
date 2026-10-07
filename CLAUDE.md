@@ -22,8 +22,9 @@ Hablar con Alba en español, sin tecnicismos.
 - Escrituras (tareas, descartes, eventos, importantes) van por POST al Apps Script
   (`TASKS_API_URL`) con cola de pendientes que se verifica releyendo.
 - No poner claves de Supabase en la página ni en el repo.
-- Columna «Agenda / orden del día» de la pestaña Agenda: debe llevar la URL completa;
-  texto como «Abrir convocatoria» no sirve.
+- Enlaces: `apps-script/Enlaces.gs` (filasConEnlaces) sube la URL real de las celdas con texto
+  enlazado («Abrir ficha») en columnas cuya cabecera es de enlace. Si la celda es solo texto,
+  no hay enlace. En Asignadas solo se aceptan fichas de legebiltzarra.eus (nunca Gmail).
 
 ## Reglas que ha pedido Alba
 - No cambiar ni mover la contraseña del Buzón (`BUZON_PASSWORD`).

@@ -262,6 +262,7 @@ button{font-family:inherit}
 .as-venc.urg{color:var(--danger)}
 .as-venc.past{color:var(--slate);font-weight:600}
 .as-meta{gap:4px 12px}
+.as-nolink{font-size:12px;color:var(--slate);font-weight:600}
 .as-meta b{color:var(--night)}
 .as-card.urg{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger) inset}
 .as-card.past{opacity:.6}
@@ -2188,6 +2189,21 @@ function niAsignadasData(){
   .filter(x=>x.titulo&&(all||isOwnPersonLabel(x.parlamentario)))
   .map(x=>({...x,vencISO:niPlazoISO(x.vencimiento),...(plazos.get(normPerson(x.titulo))||{})}));
 }
+// Enlace a la ficha de la iniciativa en el Parlamento. Solo se aceptan fichas del Parlamento
+// (no correos ni otras webs). Las fichas con sesión caducable se pasan al formato público.
+function niFichaParlamento(url){
+ const u=String(url||'').trim();
+ if(!/^https?:\/\/(www\.)?legebiltzarra\.eus\//i.test(u))return '';
+ const id=(u.match(/P18_ID,P18_EXPAND:(\d+)/)||u.match(/P18_ID:Y,(\d+)/)||[])[1];
+ return id?`https://www.legebiltzarra.eus/ords/f?p=CTP:INICIATIVA_DETALLE::::SESSION:RESETBRCRMB,P18_ID:Y,${id}&p_lang=es`:u;
+}
+function niEnlaceIniciativa(x){
+ const directo=niFichaParlamento(x.enlace);if(directo)return directo;
+ // Si no, se busca la misma iniciativa (mismo expediente o mismo título exacto) en «Todas iniciativas».
+ const exp=String(x.expediente||'').replace(/\s/g,''),tit=normPerson(x.titulo||'');
+ const hit=(initiativeItems||[]).find(i=>(exp&&String(i.expediente||'').replace(/\s/g,'')===exp)||(tit&&normPerson(i.titulo||'')===tit));
+ return hit?niFichaParlamento(hit.enlace):'';
+}
 function niFechaCorta(v){const iso=niPlazoISO(v);return iso?nhShortDate(iso)+' '+NI_MESES[niDate(iso).getMonth()]:String(v||'')}
 function niAsigCard(x){
  const hoy=todayISO(),d=x.vencISO,dias=d?Math.round((niDate(d)-niDate(hoy))/864e5):null;
@@ -2200,7 +2216,8 @@ function niAsigCard(x){
   x.expediente?`<span>${esc(String(x.expediente).replaceAll('\\','/'))}</span>`:'',
   (niSeesAll()||isEquipo())&&x.parlamentario?`<span>${ico('user',14)}${esc(x.parlamentario)}</span>`:''
  ].filter(Boolean).join('');
- const enlace=/^https?:\/\//i.test(x.enlace)?`<a href="${esc(x.enlace)}" target="_blank" rel="noopener">${ico('document',15)}Ver iniciativa</a>`:initiativeLinkHTMLByTitle(x.titulo,`${ico('document',15)}Ver iniciativa`);
+ const url=niEnlaceIniciativa(x);
+ const enlace=url?`<a href="${esc(url)}" target="_blank" rel="noopener">${ico('document',15)}Ver iniciativa</a>`:`<span class="as-nolink">Sin enlace a la ficha todavía</span>`;
  return `<article class="ni-card ni-init as-card ${urg?'urg':''} ${pasada?'past':''}"><div class="ni-tags"><span class="ni-tag electric">${esc(x.tipo||'Iniciativa')}</span>${x.autor?`<span class="ni-tag">${esc(x.autor)}</span>`:''}</div><h3>${esc(x.titulo)}</h3>${vence?`<div class="ni-meta">${vence}</div>`:''}${meta?`<div class="ni-meta as-meta">${meta}</div>`:''}${enlace?`<div class="ni-actions">${enlace}</div>`:''}</article>`;
 }
 function niAsignadas(){
