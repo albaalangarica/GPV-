@@ -124,6 +124,46 @@ button{font-family:inherit}
 .ni-tag.warning,.ni-tag.agenda-tag-comision{background:var(--warning-50);color:var(--warning)}
 .ni-tag.danger,.ni-tag.agenda-tag-pleno{background:var(--danger-50);color:var(--danger)}
 .ni-tag.night{background:var(--night);color:#fff}
+/* Inicio compacto */
+.nh-top{background:var(--night);color:#fff}
+.nh-top .wrap{padding-top:14px;padding-bottom:16px}
+.nh-date{margin:0;font-size:13px;color:rgba(255,255,255,.65)}
+.nh-date b{color:#fff;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.nh-pleno{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 14px;border-radius:12px;background:var(--electric);color:#fff;font-size:14px;font-weight:700;text-decoration:none}
+.nh-pleno span{margin-left:auto;white-space:nowrap}
+.nh-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.nh-tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;text-decoration:none;cursor:pointer;font:inherit}
+.nh-tile b{font-size:21px;font-weight:800;line-height:1.1;display:flex;align-items:center;min-height:23px}
+.nh-tile small{font-size:10.5px;font-weight:600;color:rgba(255,255,255,.7);white-space:nowrap}
+.nh-tile.warn b{color:#ffb4b4}
+.nh-sec{padding-top:16px}
+.nh-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.nh-head h2{margin:0;margin-right:auto;font-size:16px;font-weight:800;color:var(--night)}
+.nh-more{border:0;background:none;color:var(--electric);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;white-space:nowrap}
+.nh-add{width:30px;height:30px;border-radius:999px;border:0;background:var(--electric);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.nh-tabs{display:inline-flex;background:#fff;border:1px solid var(--line-strong);border-radius:999px;padding:3px}
+.nh-tabs button{border:0;background:none;border-radius:999px;padding:5px 10px;font:inherit;font-size:12px;font-weight:700;color:var(--slate);cursor:pointer;white-space:nowrap}
+.nh-tabs button.active{background:var(--night);color:#fff}
+.nh-tabs i{font-style:normal;opacity:.6}
+.nh-list{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.nh-row{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 0;min-height:46px;border-top:1px solid var(--line);color:inherit;text-decoration:none}
+.nh-row:first-child{border-top:0}
+.nh-row.empty{padding-left:14px;color:var(--slate);font-size:13.5px}
+.nh-row.past{opacity:.55}
+.nh-row.pleno{background:#eef3ff}
+.nh-row .check{flex:0 0 auto;margin-left:12px}
+.nh-bar{flex:0 0 4px;align-self:stretch;border-radius:0 4px 4px 0}
+.nh-time{flex:0 0 46px;font-size:12px;font-weight:700;color:var(--slate);line-height:1.25}
+.nh-time.warn{color:var(--danger)}
+.nh-title{flex:1;min-width:0;font-size:14px;font-weight:600;color:var(--night);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nh-title small{font-weight:500;color:var(--slate)}
+.nh-row.pleno .nh-title{font-weight:800}
+.nh-ico{flex:0 0 auto;display:flex;color:var(--electric);padding:4px}
+.nh-row .cal-btn{flex:0 0 auto;display:inline-flex!important;padding:4px!important;font-size:17px!important;line-height:1;background:none;border:0;cursor:pointer}
+.nh-state{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--slate);white-space:nowrap}
+.nh-state.ok{color:var(--success)}
+.nh-state.warn{color:var(--danger)}
+@media (min-width:860px){.nh-cols{display:grid;grid-template-columns:3fr 2fr;gap:24px;align-items:start}.nh-date b{font-size:24px}}
 /* Iniciativas importantes */
 .ni-init{position:relative}
 .ni-init .ni-tags{padding-right:40px}
@@ -1922,44 +1962,70 @@ function niInboxCount(){
  const items=n==='alba langarica'&&isAdmin()?(albaCosasItems||[]):n==='santi lopez'?(santiCosasItems||[]):null;
  return items?items.filter(x=>!itemDismissed('buzon',x)).length:null;
 }
+// Inicio compacto: una franja con la fecha y el pleno, cuatro casillas con números
+// y bloques en filas de una línea. Lo detallado está en cada página.
+let nhDia='hoy';
+const NH_TAG_COLOR={'agenda-tag-pleno':'var(--danger)','agenda-tag-comision':'var(--warning)','agenda-tag-grupo':'var(--electric)','agenda-tag-mesa':'var(--success)'};
+function nhShortDate(iso){const d=niDate(iso);return `${NI_DIAS[d.getDay()]} ${d.getDate()}`}
+function nhSec(title,action,body,id=''){return `<section class="nh-sec"${id?` id="${id}"`:''}><div class="nh-head"><h2>${title}</h2>${action||''}</div>${body}</section>`}
+function nhMore(attr,label='Ver todo'){return `<button type="button" class="nh-more" ${attr}>${label} ›</button>`}
+function nhAgendaRow(x,withDay){
+ const tag=agendaEntryTag(x),pleno=niIsPleno(x),order=pleno?niOrderLink(x):agendaOrderLink(x);
+ const time=x.event_time&&!/todo el d/i.test(x.event_time)?x.event_time:'';
+ const when=withDay?`${nhShortDate(x.event_date)}${time?'<br>'+esc(time):''}`:(time?esc(time):'Día');
+ return `<div class="nh-row ${pleno?'pleno':''} ${niIsPastToday(x)?'past':''}"><span class="nh-bar" style="background:${NH_TAG_COLOR[tag.cls]||'var(--slate)'}"></span><span class="nh-time">${when}</span><span class="nh-title">${pleno?'★ ':''}${esc(agendaTitleParts(x).title)}</span>${order?`<a class="nh-ico" href="${esc(order)}" target="_blank" rel="noopener" title="Orden del día" aria-label="Orden del día">${ico('document',18)}</a>`:''}${calendarButtonHTML(agendaCalendarEvent(x),'📅')}</div>`;
+}
 function niHome(){
  const ident=displayIdentity(),first=String(ident.name||'').split(' ')[0];
- const hoy=todayISO(),up=niOwnUpcoming();
+ const hoy=todayISO(),manana=plusDaysISO(hoy,1),up=niOwnUpcoming();
  const today=up.filter(x=>x.event_date===hoy);
- const week=up.filter(x=>x.event_date>hoy&&x.event_date<=plusDaysISO(hoy,7));
  const deadlines=niDeadlines(7);
  const inbox=niInboxCount();
  const openTasks=taskUserEnabled()?tasks.filter(t=>!t.done):[];
- // Titular: la fecha de hoy.
- const title=niLongDate(hoy).replace(/^./,c=>c.toUpperCase())+'.';
- const shortcuts=[
-  `<button type="button" data-tab="Agenda">${ico('calendar',16)}Toda la agenda</button>`,
-  deadlines.length?`<a href="#ni-vencimientos">${ico('alert',16)}Vencimientos <span class="count">${deadlines.length}</span></a>`:'',
-  taskUserEnabled()?`<button type="button" data-go="Tareas">${ico('tasks',16)}Tareas${openTasks.length?` <span class="count">${openTasks.length}</span>`:''}</button>`:'',
-  inbox!==null?`<button type="button" data-tab="Buzón">${ico('inbox',16)}Buzón${inbox?` <span class="count">${inbox}</span>`:''}</button>`:'',
-  `<button type="button" data-tab="Radar">${ico('radar',16)}Radar</button>`,
-  `<button type="button" data-tab="Iniciativas">${ico('document',16)}Iniciativas</button>`
- ].filter(Boolean).join('');
- const hero=`<section class="ni-hero"><div class="wrap"><p class="eyebrow">GPV · Hola, ${esc(first)}</p><h1 class="display">${esc(title)}</h1>${niPlenoBanner()}<nav class="ni-shortcuts" aria-label="Atajos">${shortcuts}</nav></div></section>`;
 
- const todaySec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`)}${today.length?`<div class="ni-grid two">${today.map(niAgendaCard).join('')}</div>`:niEmpty('Nada en la agenda de hoy','Consulta lo que viene esta semana.')}</div></section>`;
- const weekSec=`<section class="ni-section"><div class="wrap">${niSectionHead('Próximos días',week.length?`${niCount(week.length,'cita','citas')} esta semana`:'Semana tranquila',`<button type="button" class="ni-link" data-tab="Agenda">Ver todo ${ico('arrowRight',16)}</button>`)}${week.length?`<div class="ni-grid two">${week.slice(0,6).map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas en los próximos 7 días','')}<div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
- const dlSec=deadlines.length?`<section class="ni-section" id="ni-vencimientos"><div class="wrap">${niSectionHead('Vencimientos','Plazos de esta semana')}<div class="ni-grid two">${deadlines.slice(0,8).map(x=>{const who=String(x.detail||'').split(':')[0];return `<article class="ni-card ni-event">${niDateBlock(x.event_date,'danger')}<div class="ni-event-body"><div class="ni-tags"><span class="ni-tag danger">${esc(x.organ_activity||'Plazo')}</span></div><h3>${esc(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</h3>${niSeesAll()&&who?`<div class="ni-meta"><span>${ico('user',15)}${esc(who)}</span></div>`:''}${initiativeLinkHTMLByTitle(String(x.detail||'').replace(/^[^:]+:\s*/,''))}</div></article>`}).join('')}</div></div></section>`:'';
+ // Franja superior: fecha, saludo y, si hay pleno en los próximos días, acceso directo al orden del día.
+ const p=niNextPleno();
+ const plenoLine=p&&p.event_date<=plusDaysISO(hoy,7)?`<a class="nh-pleno" href="${esc(niOrderLink(p))}" target="_blank" rel="noopener">★ Pleno ${esc(niRelDay(p.event_date).toLowerCase())}${p.event_time&&/^\d/.test(p.event_time)?' · '+esc(p.event_time):''}<span>Orden del día ›</span></a>`:'';
+ const tiles=[
+  `<button type="button" class="nh-tile" data-tab="Agenda"><b>${today.length}</b><small>Agenda hoy</small></button>`,
+  `<a class="nh-tile ${deadlines.length?'warn':''}" href="#nh-plazos"><b>${deadlines.length}</b><small>Plazos</small></a>`,
+  taskUserEnabled()?`<button type="button" class="nh-tile" data-go="Tareas"><b>${openTasks.length}</b><small>Tareas</small></button>`:'',
+  inbox!==null?`<button type="button" class="nh-tile" data-tab="Buzón"><b>${inbox}</b><small>Buzón</small></button>`:'',
+  `<button type="button" class="nh-tile" data-tab="Radar"><b>${radarInWindow(1,true).length}</b><small>Radar hoy</small></button>`,
+  `<button type="button" class="nh-tile" data-tab="Iniciativas"><b>${ico('document',20)}</b><small>Iniciativas</small></button>`
+ ].filter(Boolean).slice(0,4).join('');
+ const top=`<section class="nh-top"><div class="wrap"><p class="nh-date"><b>${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</b> · Hola, ${esc(first)}</p>${plenoLine}<div class="nh-tiles">${tiles}</div></div></section>`;
 
- const impSec=niImportantesHome();
- const taskSec=taskUserEnabled()?`<section class="ni-section"><div class="wrap">${homeTasks()}</div></section>`:'';
- const radarSec=(!isPrensa()&&!isEquipo())?radarHome():'';
- const radarWrap=(!isPrensa()&&!isEquipo())?`<section class="ni-section"><div class="wrap">${niSectionHead('Radar',radarSec?'Lo de hoy':'Nada nuevo hoy',`<button type="button" class="ni-link" data-tab="Radar">Todo el radar ${ico('arrowRight',16)}</button>`)}${radarSec}</div></section>`:'';
- const nOtros=niMiAgenda().filter(x=>category(x)==='Otros'&&x.event_date>=hoy).length;
- const vistaSeg=`<div class="ni-row" style="margin:0">${niOtrosToggle(nOtros)}<div class="ni-seg" role="tablist" aria-label="Vista de la agenda"><button type="button" data-in-vista="lista" class="${inVista==='lista'?'active':''}">${ico('list',15)}Lista</button><button type="button" data-in-vista="mes" class="${inVista==='mes'?'active':''}">${ico('grid',15)}Calendario</button></div></div>`;
- if(inVista==='mes'){
-  if(!inMes)inMes=hoy.slice(0,7);if(inDia===null)inDia=hoy;
-  const items=niMiAgenda().filter(x=>inOtros||category(x)!=='Otros');
-  const list=items.filter(x=>inDia?x.event_date===inDia:x.event_date.startsWith(inMes));
-  const calSec=`<section class="ni-section" id="ni-hoy"><div class="wrap">${niSectionHead('Agenda','Calendario',vistaSeg)}<div class="ni-grid" style="margin-top:16px">${niMonthGrid(items,inMes,inDia,'in')}<div><p class="ni-count">${inDia?`<b>${esc(niRelDay(inDia))}</b>`:`<b>Todo ${NI_MESES_LARGOS[Number(inMes.slice(5))-1]}</b>`} · ${niCount(list.length,'cita','citas')}</p>${list.length?`<div class="ni-grid two">${list.map(niAgendaCard).join('')}</div>`:niEmpty('Sin citas','Elige otro día en el calendario.')}</div></div><div style="margin-top:16px"><button type="button" class="ni-btn ghost" data-tab="Agenda">${ico('calendar',16)}Ver toda la agenda</button></div></div></section>`;
-  return hero+calSec+impSec+dlSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+ // Agenda: Hoy · Mañana · Semana, en filas.
+ const sets={hoy:today,manana:up.filter(x=>x.event_date===manana),semana:up.filter(x=>x.event_date>hoy&&x.event_date<=plusDaysISO(hoy,7))};
+ const list=sets[nhDia]||today;
+ const tabs=`<div class="nh-tabs" role="tablist">${[['hoy','Hoy'],['manana','Mañana'],['semana','Semana']].map(([k,l])=>`<button type="button" data-nh-dia="${k}" class="${nhDia===k?'active':''}">${l}${sets[k].length?` <i>${sets[k].length}</i>`:''}</button>`).join('')}</div>`;
+ const agendaBody=list.length?`<div class="nh-list">${list.slice(0,12).map(x=>nhAgendaRow(x,nhDia==='semana')).join('')}</div>`:`<div class="nh-list"><div class="nh-row empty">${nhDia==='hoy'?'Nada en la agenda de hoy.':nhDia==='manana'?'Nada mañana.':'Semana sin citas.'}</div></div>`;
+ const agendaSec=nhSec('Agenda',`${tabs}${nhMore('data-tab="Agenda"','Todo')}`,agendaBody);
+
+ const dlSec=deadlines.length?nhSec('Plazos','',`<div class="nh-list">${deadlines.slice(0,6).map(x=>{const who=String(x.detail||'').split(':')[0],t=String(x.detail||'').replace(/^[^:]+:\s*/,'');return `<div class="nh-row"><span class="nh-bar" style="background:var(--danger)"></span><span class="nh-time warn">${esc(nhShortDate(x.event_date))}</span><span class="nh-title">${esc(t)}${niSeesAll()&&who?` <small>· ${esc(who)}</small>`:''}</span></div>`}).join('')}</div>`,'nh-plazos'):'';
+
+ let impSec='';
+ if(!isPrensa()&&!isEquipo()){
+  const data=niInitiativeData(),all=niSeesAll();
+  const imp=data.filter(x=>{const o=importanteOwner(x);return o&&(all||normPerson(o.parlamentario)===normPerson(currentPersonName()))});
+  if(imp.length)impSec=nhSec('★ Importantes',nhMore('data-tab="Iniciativas"','Iniciativas'),`<div class="nh-list">${imp.map(x=>`<div class="nh-row"><span class="nh-bar" style="background:#ffb800"></span><span class="nh-title">${esc(x.titulo)}${all&&x.parlamentario?` <small>· ${esc(x.parlamentario)}</small>`:''}</span><span class="nh-state ${x.estado==='Contestada'?'ok':x.estado==='Pendiente'?'warn':''}">${esc(x.estado)}</span></div>`).join('')}</div>`);
+  else if(data.some(canMarkImportante))impSec=nhSec('★ Importantes',nhMore('data-tab="Iniciativas"','Marcar'),`<div class="nh-list"><div class="nh-row empty">Marca ☆ hasta ${MAX_IMPORTANTES} iniciativas tuyas para tenerlas aquí.</div></div>`);
  }
- return hero+todaySec.replace(niSectionHead('Hoy','Agenda de hoy',`<button type="button" class="ni-link" data-tab="Agenda">Toda la agenda ${ico('arrowRight',16)}</button>`),niSectionHead('Hoy','Agenda de hoy',vistaSeg))+impSec+dlSec+weekSec+taskSec+radarWrap+'<div style="height:12px"></div>';
+
+ let taskSec='';
+ if(taskUserEnabled()){
+  const orden={'Urgente':0,'Pronto':1,'Cuando pueda':2};
+  const vis=[...openTasks].sort((a,b)=>(orden[a.priority]??1)-(orden[b.priority]??1)||byTaskDue(a,b)).slice(0,3);
+  taskSec=nhSec('Tareas',`<button type="button" class="nh-add" id="newTask" aria-label="Nueva tarea">${ico('plus',16)}</button>${nhMore('data-go="Tareas"','Todas')}`,`<div class="nh-list">${vis.length?vis.map(t=>`<div class="nh-row"><button class="check" data-task-toggle="${esc(t.id)}" aria-label="Completar"></button><span class="nh-title">${esc(t.title)}</span>${taskDueISO(t)?`<span class="nh-state ${taskDueISO(t)<=todayISO()?'warn':''}">${esc(nhShortDate(taskDueISO(t)))}</span>`:''}</div>`).join(''):'<div class="nh-row empty">Sin tareas pendientes.</div>'}</div>`);
+ }
+
+ let radarSec='';
+ if(!isPrensa()&&!isEquipo()){
+  const r=radarInWindow(1,true).slice(0,2);
+  radarSec=nhSec('Radar',nhMore('data-tab="Radar"'),`<div class="nh-list">${r.length?r.map(x=>`<${x.url?`a href="${esc(x.url)}" target="_blank" rel="noopener"`:'div'} class="nh-row"><span class="nh-bar" style="background:var(--electric)"></span><span class="nh-title">${esc(x.titulo)}</span>${x.fuente?`<span class="nh-state">${esc(x.fuente)}</span>`:''}</${x.url?'a':'div'}>`).join(''):'<div class="nh-row empty">Nada nuevo hoy.</div>'}</div>`);
+ }
+ return top+`<div class="wrap nh-cols"><div>${agendaSec}${dlSec}</div><div>${impSec}${taskSec}${radarSec}</div></div><div style="height:16px"></div>`;
 }
 
 // Bloque del Inicio: las iniciativas importantes (las mías; en administración, las de todo el grupo).
@@ -2098,6 +2164,7 @@ function niBind(){
  on('[data-ag-cat]',b=>{const c=b.dataset.agCat;agCats.has(c)?agCats.delete(c):agCats.add(c);render()});
  on('[data-ag-mas]',()=>{agDias+=30;render()});
  on('[data-ag-scope]',b=>{agScope=b.dataset.agScope;render()});
+ on('[data-nh-dia]',b=>{nhDia=b.dataset.nhDia;render()});
  on('[data-in-otros]',()=>{inOtros=!inOtros;render()});
  on('[data-in-vista]',b=>{inVista=b.dataset.inVista;inMes=todayISO().slice(0,7);inDia=todayISO();render()});
  on('[data-in-dia]',b=>{inDia=inDia===b.dataset.inDia?'':b.dataset.inDia;render()});
