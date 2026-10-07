@@ -2107,7 +2107,7 @@ function niAgenda(){
 }
 
 // ---- Iniciativas ----
-const NI_ESTADOS=['Todas','Pendientes','Contestadas','Asignadas'];
+const NI_ESTADOS=['Todas','Pendientes','Contestadas'];
 function niInitiativeData(){
  const all=niSeesAll(),answered=x=>/respond|contestad|respuesta recibida|finalizad|cerrad/i.test(x.situacion||'');
  const asg=(assignedItems||[]).filter(x=>all||isOwnPersonLabel(x.parlamentario)).map(x=>({fuente:'asg',titulo:x.titulo,tipo:initiativeKind(x),estado:'Asignada',parlamentario:canonicalGroupPerson(x.parlamentario),autor:x.autor,plazo:x.vencimiento,expediente:''}));
@@ -2135,7 +2135,9 @@ function niInitCard(x){
  return `<article class="ni-card ni-init ${imp?'imp':''}">${star}<div class="ni-tags">${imp?`<span class="ni-tag star">★ Importante</span>`:''}<span class="ni-tag electric">${esc(x.tipo)}</span><span class="ni-tag ${estadoTone}">${esc(x.estado)}</span></div><h3>${esc(x.titulo)}</h3>${meta?`<div class="ni-meta">${meta}</div>`:''}${links?`<div class="ni-actions">${links}</div>`:''}</article>`;
 }
 function niIniciativas(){
- const data=niInitiativeData();
+ // Solo lo registrado por el grupo: las PNL y mociones adjudicadas están en la pestaña Asignadas.
+ if(niEstado==='Asignadas')niEstado='Todas';
+ const data=niInitiativeData().filter(x=>x.fuente!=='asg');
  const kinds=initiativeKindsIn([data.map(x=>({tipo:x.tipo}))]);
  if(niTipo!=='Todos'&&!kinds.includes(niTipo))niTipo='Todos';
  const people=[...new Set(data.map(x=>x.parlamentario).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
