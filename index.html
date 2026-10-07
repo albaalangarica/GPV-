@@ -2195,7 +2195,8 @@ function niAsignadasData(){
  const all=niSeesAll()||isEquipo(),plazos=niPlazosPorTitulo();
  return (assignedItems||[]).flatMap(x=>String(x.parlamentario||'').split('/').map(p=>({...x,parlamentario:canonicalGroupPerson(p.trim())})))
   .filter(x=>x.titulo&&(all||isOwnPersonLabel(x.parlamentario)))
-  .map(x=>({...x,vencISO:niPlazoISO(x.vencimiento),...(plazos.get(normPerson(x.titulo))||{})}));
+  // Tipos unificados como en Iniciativas: «Moción consecuencia de interpelación» → «Moción».
+  .map(x=>({...x,tipo:x.tipo?initiativeKindLabel(x.tipo):'',vencISO:niPlazoISO(x.vencimiento),...(plazos.get(normPerson(x.titulo))||{})}));
 }
 // Enlace a la ficha de la iniciativa en el Parlamento. Solo se aceptan fichas del Parlamento
 // (no correos ni otras webs). Las fichas con sesión caducable se pasan al formato público.
