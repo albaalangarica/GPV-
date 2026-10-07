@@ -2201,8 +2201,7 @@ function niAsigCard(x){
   (niSeesAll()||isEquipo())&&x.parlamentario?`<span>${ico('user',14)}${esc(x.parlamentario)}</span>`:''
  ].filter(Boolean).join('');
  const enlace=/^https?:\/\//i.test(x.enlace)?`<a href="${esc(x.enlace)}" target="_blank" rel="noopener">${ico('document',15)}Ver iniciativa</a>`:initiativeLinkHTMLByTitle(x.titulo,`${ico('document',15)}Ver iniciativa`);
- const cal=d&&!pasada?calendarButtonHTML({title:`Vence ${x.tipo||'iniciativa'}: ${x.titulo}`,date:d,time:'Todo el día',location:'Parlamento Vasco',details:x.autor?`Autor: ${x.autor}`:''},'📅 Al calendario'):'';
- return `<article class="ni-card ni-init as-card ${urg?'urg':''} ${pasada?'past':''}"><div class="ni-tags"><span class="ni-tag electric">${esc(x.tipo||'Iniciativa')}</span>${x.autor?`<span class="ni-tag">${esc(x.autor)}</span>`:''}</div><h3>${esc(x.titulo)}</h3>${vence?`<div class="ni-meta">${vence}</div>`:''}${meta?`<div class="ni-meta as-meta">${meta}</div>`:''}${enlace||cal?`<div class="ni-actions">${enlace}${cal}</div>`:''}</article>`;
+ return `<article class="ni-card ni-init as-card ${urg?'urg':''} ${pasada?'past':''}"><div class="ni-tags"><span class="ni-tag electric">${esc(x.tipo||'Iniciativa')}</span>${x.autor?`<span class="ni-tag">${esc(x.autor)}</span>`:''}</div><h3>${esc(x.titulo)}</h3>${vence?`<div class="ni-meta">${vence}</div>`:''}${meta?`<div class="ni-meta as-meta">${meta}</div>`:''}${enlace?`<div class="ni-actions">${enlace}</div>`:''}</article>`;
 }
 function niAsignadas(){
  const data=niAsignadasData(),hoy=todayISO();
