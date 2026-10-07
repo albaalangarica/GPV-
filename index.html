@@ -901,7 +901,10 @@ function onAppResume(){if(!session?.user)return;const now=Date.now();if(now-last
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')onAppResume()});window.addEventListener('focus',onAppResume);
 
 
-function initiativeType(expediente){const e=String(expediente||'').replaceAll('/','\\');if(e.includes('\\10\\07\\02\\'))return 'Solicitud de información';if(e.includes('\\10\\05\\03\\'))return 'Pregunta escrita';if(e.includes('\\10\\05\\01\\'))return 'Pregunta oral';return 'Iniciativa'}
+// Tipo según el expediente (13\\PP\\TT\\SS\\NNNNN): cuentan las cifras de tipo y subtipo, sea cual sea
+// el periodo (10, 11…). Lo que no encaja se trata como solicitud de información, que es lo habitual.
+const TIPO_POR_EXPEDIENTE={'07-02':'Solicitud de información','05-03':'Pregunta escrita','05-01':'Pregunta oral','02-01':'PNL','03-00':'Moción','04-01':'Interpelación','06-03':'Comparecencia'};
+function initiativeType(expediente){const p=String(expediente||'').replaceAll('/','\\').split('\\');return TIPO_POR_EXPEDIENTE[`${p[2]||''}-${p[3]||''}`]||'Solicitud de información'}
 async function loadInitiatives(){try{const r=await sheetRowsFor('iniciativas',INICIATIVAS_CSV_URL);const rows=r;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const firstIx=(...names)=>{for(const n of names){const i=ix(n);if(i>=0)return i}return-1};
  const links={'13\\10\\07\\02\\03457':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:90936,N','13\\10\\07\\02\\03684':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:91293,N','13\\10\\07\\02\\03710':'https://www.legebiltzarra.eus/ords/f?p=120:18:9449541491527::NO:RP,RIR:P18_ID,P18_EXPAND:91330,N'};
  const responseLinks={
@@ -1386,7 +1389,7 @@ function bindLiveSearch(id,apply){const el=document.getElementById(id);if(!el)re
 const INITIATIVE_KIND_ORDER=['PNL','Moción','Solicitud de información','Pregunta escrita','Pregunta oral','Interpelación','Comparecencia','Proposición de ley','Enmienda'];
 function initiativeKindLabel(raw){
  const txt=String(raw||'').trim(),n=normPerson(txt);
- if(!n||n==='iniciativa'||n==='asignada')return 'Otras';
+ if(!n||n==='iniciativa'||n==='asignada'||n==='otras')return 'Solicitud de información';
  if(/(^|[^a-z])pnl([^a-z]|$)/.test(n)||n.includes('proposicion no de ley'))return 'PNL';
  if(n.startsWith('mocion'))return 'Moción';
  if(n.includes('solicitud de informacion'))return 'Solicitud de información';
