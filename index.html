@@ -258,6 +258,13 @@ button{font-family:inherit}
 
 /* Más */
 .ni-hub{display:grid;gap:10px}
+.as-venc{display:inline-flex;align-items:center;gap:5px;font-weight:800;color:var(--night)}
+.as-venc.urg{color:var(--danger)}
+.as-venc.past{color:var(--slate);font-weight:600}
+.as-meta{gap:4px 12px}
+.as-meta b{color:var(--night)}
+.as-card.urg{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger) inset}
+.as-card.past{opacity:.6}
 @media (min-width:760px){.ni-hub2{grid-template-columns:1fr 1fr}}
 .ni-hubitem{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:18px;padding:15px 16px;color:var(--night);cursor:pointer;text-decoration:none;font:inherit}
 .ni-hubitem .tile{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;background:var(--electric-50);color:var(--electric);flex:0 0 auto}
@@ -878,7 +885,8 @@ function isGroupAgendaItem(x){const explicit=explicitAgendaCategory(x);if(explic
 function weekMondayISO(iso){const d=new Date(iso+'T12:00:00');const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.toISOString().slice(0,10)}
 function withProvisionalGroupMeetings(base){const items=[...base];const realWeeks=new Set(items.filter(isGroupAgendaItem).map(x=>weekMondayISO(x.event_date)));const start=new Date(PROVISIONAL_GROUP_START+'T12:00:00');const horizon=new Date();horizon.setHours(12,0,0,0);horizon.setDate(horizon.getDate()+365);for(let d=new Date(start);d<=horizon;d.setDate(d.getDate()+7)){const iso=d.toISOString().slice(0,10);if(realWeeks.has(weekMondayISO(iso)))continue;items.push({event_date:iso,day_name:'Miércoles',event_time:'Hora por confirmar',type:'Reunión',organ_activity:'Reunión de grupo (provisional)',location:'Zoom / por confirmar',detail:'Fecha provisional · reunión semanal de grupo',agenda_link:'',expediente:'',expediente_link:'',parlamentario:'',area_label:'',group_zoom:GROUP_ZOOM_URL,provisional:true})}return items}
 async function loadAgendaFromSheet(){try{const sep=AGENDA_CSV_URL.includes('?')?'&':'?';const r=await sheetRowsFor('agenda',AGENDA_CSV_URL);const data=mapAgendaRows(r);if(data.length)return withProvisionalGroupMeetings(data)}catch(e){}return withProvisionalGroupMeetings(await loadAgendaGViz())}
-async function loadPlazos(){try{const r=await sheetRowsFor('plazos',PLAZOS_CSV_URL);const rows=r;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const full=n=>{const v=normPerson(n);if(v==='santi'||v==='santiago')return 'Santi López';if(v==='ainhoa')return 'Ainhoa Domaica';if(v==='ana')return 'Ana Morales';if(v==='alvaro')return 'Álvaro Gotxi';if(v==='muriel')return 'Muriel Larrea';if(v==='laura')return 'Laura Garrido';if(v==='javier')return 'Javier de Andrés';return String(n||'').trim()};return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()&&normPerson(r[ix('Estado')]||'Pendiente')!=='resuelto').flatMap(r=>{const fecha=sheetDateToISO(r[ix('Plazo enmiendas')]);if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))return[];return String(r[ix('Responsable')]||'').split('/').map(x=>full(x.trim())).filter(Boolean).map(who=>({event_date:fecha,event_time:'Todo el día',type:'Vencimiento',organ_activity:'Plazo de enmiendas',location:'Parlamento Vasco',detail:who+': '+String(r[ix('Iniciativa')]||'').trim()}))})}catch(e){throw e}}
+let plazosRaw=[];
+async function loadPlazos(){try{const r=await sheetRowsFor('plazos',PLAZOS_CSV_URL);const rows=r;plazosRaw=rows;if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);const full=n=>{const v=normPerson(n);if(v==='santi'||v==='santiago')return 'Santi López';if(v==='ainhoa')return 'Ainhoa Domaica';if(v==='ana')return 'Ana Morales';if(v==='alvaro')return 'Álvaro Gotxi';if(v==='muriel')return 'Muriel Larrea';if(v==='laura')return 'Laura Garrido';if(v==='javier')return 'Javier de Andrés';return String(n||'').trim()};return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()&&normPerson(r[ix('Estado')]||'Pendiente')!=='resuelto').flatMap(r=>{const fecha=sheetDateToISO(r[ix('Plazo enmiendas')]);if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))return[];return String(r[ix('Responsable')]||'').split('/').map(x=>full(x.trim())).filter(Boolean).map(who=>({event_date:fecha,event_time:'Todo el día',type:'Vencimiento',organ_activity:'Plazo de enmiendas',location:'Parlamento Vasco',detail:who+': '+String(r[ix('Iniciativa')]||'').trim()}))})}catch(e){throw e}}
 function refreshAgendaFromSheet(){return refreshAllData(true,['agenda'])}
 // Al volver a la app se actualiza todo una sola vez (visibilitychange y focus llegan juntos en el móvil).
 let lastResume=0;
@@ -900,7 +908,7 @@ async function loadInitiatives(){try{const r=await sheetRowsFor('iniciativas',IN
  const plazos={'13\\10\\07\\02\\03457':'09/09/2026'};const enlIx=firstIx('URL iniciativa','Enlace'),respIx=firstIx('URL respuesta','Enlace respuesta','Respuesta'),fechaRespIx=firstIx('Fecha respuesta','Fecha de respuesta');
  const asUrl=v=>/^https?:\/\//i.test(String(v||'').trim())?String(v).trim():'';
  return rows.slice(1).filter(r=>String(r[ix('Expediente')]||'').trim()).map(r=>{const expediente=r[ix('Expediente')]||'';return {parlamentario:r[ix('Parlamentario')]||'',expediente,titulo:r[ix('Título')]||'',situacion:r[ix('Situación')]||'',enlace:asUrl(enlIx>=0?r[enlIx]:'')||links[expediente]||'',plazo:plazos[expediente]||'',tipo:initiativeType(expediente),respuestaEnlace:asUrl(respIx>=0?r[respIx]:'')||responseLinks[expediente]||'',fechaRespuesta:fechaRespIx>=0?r[fechaRespIx]||'':''}});}catch(e){throw e}}
-function mapAssignedRows(rows){if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()).map(r=>({parlamentario:String(r[ix('Parlamentario')]||'').trim(),tipo:String(r[ix('Tipo')]||'').trim(),titulo:String(r[ix('Iniciativa')]||'').trim(),autor:String(r[ix('Autor')]||'').trim(),vencimiento:String(r[ix('Vencimiento')]||'').trim()}))}
+function mapAssignedRows(rows){if(!rows.length)return[];const h=rows[0].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(1).filter(r=>String(r[ix('Iniciativa')]||'').trim()).map(r=>({parlamentario:String(r[ix('Parlamentario')]||'').trim(),tipo:String(r[ix('Tipo')]||'').trim(),titulo:String(r[ix('Iniciativa')]||'').trim(),autor:String(r[ix('Autor')]||'').trim(),vencimiento:String(r[ix('Vencimiento')]||'').trim(),fechaAsignacion:String(r[ix('Fecha asignación')]||'').trim(),expediente:String(r[ix('Expediente')]||'').trim(),enlace:String(r[ix('Enlace')]||'').trim()}))}
 function loadAssignedGViz(){return new Promise((resolve,reject)=>{const cb='gpvAssigned'+Date.now();const script=document.createElement('script');let done=false;const finish=(err,data)=>{if(done)return;done=true;delete window[cb];script.remove();err?reject(err):resolve(data)};window[cb]=res=>{try{const cols=(res.table?.cols||[]).map(c=>c.label||'');const rows=[cols,...(res.table?.rows||[]).map(r=>(r.c||[]).map(c=>c?(c.f??c.v??'') : ''))];finish(null,mapAssignedRows(rows))}catch(e){finish(e)}};script.src=ASIGNADAS_GVIZ_URL+'&tqx=responseHandler:'+cb;script.onerror=()=>finish(new Error('No se pudieron cargar las asignadas'));document.head.appendChild(script);setTimeout(()=>finish(new Error('Tiempo de espera agotado')),12000)})}
 async function loadAssigned(){try{const r=await sheetRowsFor('asignadas',ASIGNADAS_CSV_URL);const data=mapAssignedRows(r);if(data.length)return data}catch(e){}try{return await loadAssignedGViz()}catch(e){throw e}}
 async function loadAccesses(){try{const r=await sheetRowsFor('accesos',ACCESOS_CSV_URL);const rows=r;const hi=rows.findIndex(r=>String(r[0]||'').trim()==='Recurso');if(hi<0)return[];const h=rows[hi].map(x=>String(x||'').trim());const ix=n=>h.indexOf(n);return rows.slice(hi+1).filter(r=>String(r[ix('Recurso')]||'').trim()).map((r,i)=>({id:'acc-'+i,title:String(r[ix('Recurso')]||'').trim(),desc:String(r[ix('Descripción')]||'').trim(),url:String(r[ix('URL web')]||'').trim()})).filter(x=>x.title);}catch(e){throw e}}
@@ -1884,7 +1892,7 @@ function niTopNav(){
  return `<nav class="ni-topnav" aria-label="Principal"><ul>${niNavItems().map(([t,i,l])=>`<li><button type="button" data-tab="${t}" class="press ${active===t?'active':''}" ${active===t?'aria-current="page"':''}>${ico(i,18)}${l}</button></li>`).join('')}</ul></nav>`;
 }
 // Radar y Agenda se abren desde Inicio (y Radar también desde Más); Panel general sí es pestaña.
-function niNavItems(){return [['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Panel','folder','Panel']]}
+function niNavItems(){return isPrensa()?[['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Panel','folder','Panel']]:[['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Asignadas','tasks','Asignadas'],['Panel','folder','Panel']]}
 function niActiveNav(){if(tab==='Agenda'||tab==='Radar')return 'Inicio';if(NI_MAS_TABS.has(tab))return 'Panel';if(tab==='Solicitudes')return 'Iniciativas';return tab}
 function niBottomNav(){
  const active=niActiveNav();
@@ -1901,6 +1909,7 @@ function renderView(){
  switch(tab){
   case 'Agenda':page=niAgenda();break;
   case 'Iniciativas':case 'Solicitudes':page=niIniciativas();break;
+  case 'Asignadas':page=niAsignadas();break;
   case 'Radar':page=niPageHeader('Radar','Radar.','Noticias, BOPV y avisos del Gobierno Vasco.','Inicio')+niLegacy(((isPrensa()||isEquipo())?equipoRadar():radar()).replace(/<div class="pageintro">[\s\S]*?<\/div>/,''));break;
   case 'Mas':
   case 'Panel':page=niPanel();break;
@@ -2162,6 +2171,56 @@ function niMas(){
  return niPageHeader('Más',esc(ident.name||'Mi cuenta'),esc(ident.role||''))+`<div class="wrap" style="padding-top:18px"><div class="ni-hub">${items}</div><div class="ni-hub" style="margin-top:18px"><a class="ni-hubitem press" href="anterior/"><span class="tile">${ico('arrowRight',22)}</span><span class="txt"><b>Versión anterior</b><small>El diseño de antes, por si lo necesitas</small></span></a><button type="button" class="ni-hubitem press danger" id="logout"><span class="tile">${ico('logout',22)}</span><span class="txt"><b>Salir</b><small>Cambiar de usuario</small></span></button></div></div><div style="height:16px"></div>`;
 }
 
+// ---- Asignadas ----
+// PNL y mociones adjudicadas a cada parlamentario, con sus plazos (pestaña «PNL y mociones
+// asignadas») y, si la iniciativa está en «Plazos enmiendas», también la Mesa, el debate y el
+// plazo de enmiendas.
+let asTipo='Todas',asPersona='Todos';
+function niPlazosPorTitulo(){
+ const rows=plazosRaw||[];if(!rows.length)return new Map();
+ const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n),m=new Map();
+ for(const r of rows.slice(1)){const t=normPerson(r[ix('Iniciativa')]||'');if(t)m.set(t,{mesa:String(r[ix('Mesa')]||'').trim(),debate:String(r[ix('Debate')]||'').trim(),enmiendas:String(r[ix('Plazo enmiendas')]||'').trim(),estado:String(r[ix('Estado')]||'').trim()})}
+ return m;
+}
+function niAsignadasData(){
+ const all=niSeesAll()||isEquipo(),plazos=niPlazosPorTitulo();
+ return (assignedItems||[]).flatMap(x=>String(x.parlamentario||'').split('/').map(p=>({...x,parlamentario:canonicalGroupPerson(p.trim())})))
+  .filter(x=>x.titulo&&(all||isOwnPersonLabel(x.parlamentario)))
+  .map(x=>({...x,vencISO:niPlazoISO(x.vencimiento),...(plazos.get(normPerson(x.titulo))||{})}));
+}
+function niFechaCorta(v){const iso=niPlazoISO(v);return iso?nhShortDate(iso)+' '+NI_MESES[niDate(iso).getMonth()]:String(v||'')}
+function niAsigCard(x){
+ const hoy=todayISO(),d=x.vencISO,dias=d?Math.round((niDate(d)-niDate(hoy))/864e5):null;
+ const urg=d&&dias>=0&&dias<=3,pasada=d&&dias<0;
+ const vence=x.vencimiento?`<span class="as-venc ${urg?'urg':pasada?'past':''}">${ico('clock',15)}${d?(dias===0?'Vence hoy':dias===1?'Vence mañana':pasada?'Venció el '+esc(niFechaCorta(x.vencimiento)):'Vence '+esc(niFechaCorta(x.vencimiento))):esc(x.vencimiento)}</span>`:'';
+ const meta=[
+  x.enmiendas?`<span>Enmiendas: <b>${esc(niPlazoISO(x.enmiendas)?niFechaCorta(x.enmiendas):x.enmiendas)}</b></span>`:'',
+  x.debate?`<span>Debate: <b>${esc(x.debate)}</b></span>`:'',
+  x.mesa?`<span>Mesa: ${esc(niFechaCorta(x.mesa))}</span>`:'',
+  x.expediente?`<span>${esc(String(x.expediente).replaceAll('\\','/'))}</span>`:'',
+  (niSeesAll()||isEquipo())&&x.parlamentario?`<span>${ico('user',14)}${esc(x.parlamentario)}</span>`:''
+ ].filter(Boolean).join('');
+ const enlace=/^https?:\/\//i.test(x.enlace)?`<a href="${esc(x.enlace)}" target="_blank" rel="noopener">${ico('document',15)}Ver iniciativa</a>`:initiativeLinkHTMLByTitle(x.titulo,`${ico('document',15)}Ver iniciativa`);
+ const cal=d&&!pasada?calendarButtonHTML({title:`Vence ${x.tipo||'iniciativa'}: ${x.titulo}`,date:d,time:'Todo el día',location:'Parlamento Vasco',details:x.autor?`Autor: ${x.autor}`:''},'📅 Al calendario'):'';
+ return `<article class="ni-card ni-init as-card ${urg?'urg':''} ${pasada?'past':''}"><div class="ni-tags"><span class="ni-tag electric">${esc(x.tipo||'Iniciativa')}</span>${x.autor?`<span class="ni-tag">${esc(x.autor)}</span>`:''}</div><h3>${esc(x.titulo)}</h3>${vence?`<div class="ni-meta">${vence}</div>`:''}${meta?`<div class="ni-meta as-meta">${meta}</div>`:''}${enlace||cal?`<div class="ni-actions">${enlace}${cal}</div>`:''}</article>`;
+}
+function niAsignadas(){
+ const data=niAsignadasData(),hoy=todayISO();
+ const tipos=[...new Set(data.map(x=>x.tipo).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+ if(asTipo!=='Todas'&&!tipos.includes(asTipo))asTipo='Todas';
+ const people=[...new Set(data.map(x=>x.parlamentario).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+ if(asPersona!=='Todos'&&!people.includes(asPersona))asPersona='Todos';
+ const base=data.filter(x=>asPersona==='Todos'||x.parlamentario===asPersona);
+ const list=base.filter(x=>asTipo==='Todas'||x.tipo===asTipo);
+ // Primero las que vencen antes; las de plazo sin fecha («24 h antes del pleno»), después; las vencidas, al final.
+ const rank=x=>x.vencISO?(x.vencISO>=hoy?'0'+x.vencISO:'2'+x.vencISO):'1';
+ list.sort((a,b)=>rank(a).localeCompare(rank(b)));
+ const chips=['Todas',...tipos].map(t=>`<button type="button" class="ni-chip press ${asTipo===t?'active':''}" data-as-tipo="${esc(t)}">${t==='Todas'?'Todos los tipos':esc(t)}<span class="n">${t==='Todas'?base.length:base.filter(x=>x.tipo===t).length}</span></button>`).join('');
+ const persona=(niSeesAll()||isEquipo())&&people.length>1?`<div class="ni-row"><select class="ni-select" id="asPersona" aria-label="Parlamentario">${['Todos',...people].map(p=>`<option value="${esc(p)}" ${asPersona===p?'selected':''}>${p==='Todos'?'Todos los parlamentarios':esc(p)}</option>`).join('')}</select></div>`:'';
+ const prox=list.filter(x=>x.vencISO&&x.vencISO>=hoy&&x.vencISO<=plusDaysISO(hoy,7)).length;
+ return niPageHeader(niSeesAll()||isEquipo()?'Asignadas · todo el grupo':'Asignadas',(niSeesAll()||isEquipo())?'PNL y mociones del grupo.':'Tus PNL y mociones.',(niSeesAll()||isEquipo())?'Lo adjudicado a cada parlamentario, con sus plazos y enlaces.':'Lo que te han adjudicado, con sus plazos y enlaces.')+`<div class="wrap"><div class="ni-filters"><div class="ni-chips">${chips}</div>${persona}</div><p class="ni-count"><b>${niCount(list.length,'iniciativa','iniciativas')}</b>${prox?` · ${niCount(prox,'vence','vencen')} esta semana`:''}</p>${list.length?`<div class="ni-grid two">${list.map(niAsigCard).join('')}</div>`:niEmpty('No tienes iniciativas asignadas','Cuando te adjudiquen una PNL o moción aparecerá aquí.')}</div><div style="height:16px"></div>`;
+}
+
 // ---- Panel ----
 // Carpeta de cada parlamentario dentro del Drive compartido GPV.
 const NI_DRIVE_GPV='1CW-HXv694i1Hzl1VC2_4hfEgITHRy062';
@@ -2201,6 +2260,8 @@ function niBind(){
  on('[data-ag-cat]',b=>{const c=b.dataset.agCat;agCats.has(c)?agCats.delete(c):agCats.add(c);render()});
  on('[data-ag-mas]',()=>{agDias+=30;render()});
  on('[data-ag-scope]',b=>{agScope=b.dataset.agScope;render()});
+ on('[data-as-tipo]',b=>{asTipo=b.dataset.asTipo;render()});
+ {const sel=document.getElementById('asPersona');if(sel)sel.onchange=()=>{asPersona=sel.value;render()}}
  on('[data-nh-dia]',b=>{nhDia=b.dataset.nhDia;render()});
  on('[data-in-otros]',()=>{inOtros=!inOtros;render()});
  on('[data-in-vista]',b=>{inVista=b.dataset.inVista;inMes=todayISO().slice(0,7);inDia=todayISO();render()});
