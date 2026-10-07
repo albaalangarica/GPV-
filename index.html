@@ -2215,8 +2215,8 @@ function niPartidoClase(autor){
  const a=normPerson(autor||'');
  if(/bildu/.test(a))return 'pt-bildu';
  if(/sumar/.test(a))return 'pt-sumar';
- if(/psoe/.test(a))return 'pt-psoe';
- if(/\b(pnv|eaj|pse)\b/.test(a))return 'pt-gris';
+ if(/psoe|\bpse\b|socialista/.test(a))return 'pt-psoe';
+ if(/\b(pnv|eaj)\b/.test(a))return 'pt-gris';
  if(/\bvox\b/.test(a))return 'pt-vox';
  if(/\bpp\b|popular/.test(a))return 'pt-pp';
  return '';
