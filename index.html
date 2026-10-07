@@ -262,6 +262,12 @@ button{font-family:inherit}
 .as-venc.urg{color:var(--danger)}
 .as-venc.past{color:var(--slate);font-weight:600}
 .as-meta{gap:4px 12px}
+.ni-tag.pt-bildu{background:#dff5f2;color:#0f766e}
+.ni-tag.pt-sumar{background:#fde8ea;color:#c0392b}
+.ni-tag.pt-psoe{background:#f5e3e7;color:#7b1e34}
+.ni-tag.pt-pp{background:#e3edff;color:#1f4b90}
+.ni-tag.pt-vox{background:#e4f5e4;color:#2e7d32}
+.ni-tag.pt-gris{background:#eceff3;color:#5b6576}
 .as-nolink{font-size:12px;color:var(--slate);font-weight:600}
 .as-meta b{color:var(--night)}
 .as-card.urg{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger) inset}
@@ -2204,6 +2210,17 @@ function niEnlaceIniciativa(x){
  const hit=(initiativeItems||[]).find(i=>(exp&&String(i.expediente||'').replace(/\s/g,'')===exp)||(tit&&normPerson(i.titulo||'')===tit));
  return hit?niFichaParlamento(hit.enlace):'';
 }
+// Color suave de la etiqueta del grupo autor.
+function niPartidoClase(autor){
+ const a=normPerson(autor||'');
+ if(/bildu/.test(a))return 'pt-bildu';
+ if(/sumar/.test(a))return 'pt-sumar';
+ if(/psoe/.test(a))return 'pt-psoe';
+ if(/\b(pnv|eaj|pse)\b/.test(a))return 'pt-gris';
+ if(/\bvox\b/.test(a))return 'pt-vox';
+ if(/\bpp\b|popular/.test(a))return 'pt-pp';
+ return '';
+}
 function niFechaCorta(v){const iso=niPlazoISO(v);return iso?nhShortDate(iso)+' '+NI_MESES[niDate(iso).getMonth()]:String(v||'')}
 function niAsigCard(x){
  const hoy=todayISO(),d=x.vencISO,dias=d?Math.round((niDate(d)-niDate(hoy))/864e5):null;
@@ -2218,7 +2235,7 @@ function niAsigCard(x){
  ].filter(Boolean).join('');
  const url=niEnlaceIniciativa(x);
  const enlace=url?`<a href="${esc(url)}" target="_blank" rel="noopener">${ico('document',15)}Ver iniciativa</a>`:`<span class="as-nolink">Sin enlace a la ficha todavía</span>`;
- return `<article class="ni-card ni-init as-card ${urg?'urg':''} ${pasada?'past':''}"><div class="ni-tags"><span class="ni-tag electric">${esc(x.tipo||'Iniciativa')}</span>${x.autor?`<span class="ni-tag">${esc(x.autor)}</span>`:''}</div><h3>${esc(x.titulo)}</h3>${vence?`<div class="ni-meta">${vence}</div>`:''}${meta?`<div class="ni-meta as-meta">${meta}</div>`:''}${enlace?`<div class="ni-actions">${enlace}</div>`:''}</article>`;
+ return `<article class="ni-card ni-init as-card ${urg?'urg':''} ${pasada?'past':''}"><div class="ni-tags"><span class="ni-tag electric">${esc(x.tipo||'Iniciativa')}</span>${x.autor?`<span class="ni-tag ${niPartidoClase(x.autor)}">${esc(x.autor)}</span>`:''}</div><h3>${esc(x.titulo)}</h3>${vence?`<div class="ni-meta">${vence}</div>`:''}${meta?`<div class="ni-meta as-meta">${meta}</div>`:''}${enlace?`<div class="ni-actions">${enlace}</div>`:''}</article>`;
 }
 function niAsignadas(){
  const data=niAsignadasData(),hoy=todayISO();
