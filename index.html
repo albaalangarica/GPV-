@@ -1891,7 +1891,7 @@ function niCount(n,uno,varios){return `${n} ${n===1?uno:varios}`}
 // ---- Estructura ----
 function niTopBar(){
  const ident=displayIdentity();
- return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><img class="ni-logo" src="logo-ppvasco-blanco.png?v=1" alt="PP Vasco" width="130" height="27"><span>Grupo Parlamentario</span></button>${niTopNav()}<details class="ni-user"><summary class="ni-avatar press" aria-label="Tu cuenta"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></summary><div class="ni-usermenu"><b>${esc(ident.name||'')}</b><small>${esc(ident.role||'')}</small><button type="button" id="logout">${ico('logout',18)}Cambiar de usuario</button><a href="anterior/">${ico('arrowRight',18)}Versión anterior</a></div></details></div></header>`;
+ return `<header class="ni-top"><div class="wrap"><button type="button" class="ni-word press" data-tab="Inicio" aria-label="GPV · Inicio"><img class="ni-logo" src="logo-ppvasco-blanco.png?v=1" alt="PP Vasco" width="130" height="27"><span>Grupo Parlamentario</span></button>${niTopNav()}<details class="ni-user"><summary class="ni-avatar press" aria-label="Tu cuenta"><small>${esc(ident.role||'')}</small><i>${esc(niInitials(ident.name))}</i></summary><div class="ni-usermenu"><b>${esc(ident.name||'')}</b><small>${esc(ident.role||'')}</small><button type="button" id="logout">${ico('logout',18)}Cambiar de usuario</button></div></details></div></header>`;
 }
 // En ordenador la navegación va en la cabecera (como NNGG); en móvil, en la barra inferior.
 function niTopNav(){
