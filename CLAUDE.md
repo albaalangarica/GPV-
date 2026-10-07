@@ -7,7 +7,7 @@ Hablar con Alba en español, sin tecnicismos.
 ## Archivos
 - `index.html` — la app entera (diseño nuevo, estilo NNGG Euskadi). El script es un IIFE:
   la parte final («ni…») redefine `renderView`/`renderLogin` y gana a las de arriba.
-- `anterior/index.html` — diseño antiguo, accesible desde Más → «Versión anterior».
+- `anterior/index.html` — diseño antiguo; sigue en /anterior/ pero ya no hay enlace en la app.
 - `nueva/index.html` — solo redirige a la raíz (era la versión de prueba).
 - `sw.js` — service worker. Si cambias archivos de la app, sube `CACHE_NAME`.
 - `logo-ppvasco.png` (original), `logo-ppvasco-blanco.png`, `gpv-icon*.png`, `favicon.png`.
@@ -37,7 +37,7 @@ Hablar con Alba en español, sin tecnicismos.
 - Navegación: Inicio · Iniciativas · Asignadas · Panel (sin «Más»). Asignadas = PNL y mociones
   adjudicadas (pestaña «PNL y mociones asignadas» + datos de «Plazos enmiendas» por título). Agenda y Radar se abren desde Inicio;
   Panel reúne carpeta del Drive de cada uno, Buzón, Tareas, Radar y recursos. Cambiar de
-  usuario y versión anterior: tocando las iniciales arriba a la derecha.
+  usuario: tocando las iniciales arriba a la derecha.
 - Menos clics y menos líneas; filtros siempre a la vista (sin deslizar).
 - Iniciativas importantes: hasta 3 por parlamentario, pestaña «Importantes» del Excel.
 
