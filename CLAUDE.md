@@ -33,7 +33,9 @@ Hablar con Alba en español, sin tecnicismos.
   La etiqueta del Excel manda sobre la categoría deducida.
 - Plenos destacados, con enlace al orden del día siempre visible (cabecera e Inicio).
 - Tarjetas de agenda compactas: sin subtítulo, solo título + tipo/hora/lugar.
-- Navegación: Inicio · Iniciativas · Panel · Más. Agenda y Radar se abren desde Inicio.
+- Navegación: Inicio · Iniciativas · Panel (sin «Más»). Agenda y Radar se abren desde Inicio;
+  Panel reúne carpeta del Drive de cada uno, Buzón, Tareas, Radar y recursos. Cambiar de
+  usuario y versión anterior: tocando las iniciales arriba a la derecha.
 - Menos clics y menos líneas; filtros siempre a la vista (sin deslizar).
 - Iniciativas importantes: hasta 3 por parlamentario, pestaña «Importantes» del Excel.
 
