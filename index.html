@@ -593,7 +593,7 @@ function myOutbox(){const me=currentPersonName();return readOutbox().filter(x=>x
 function outboxTarget(e){return e.kind+':'+e.target}
 function resolveOutboxWaiter(uid,value){const w=outboxWaiters.get(uid);if(w){clearTimeout(w.timer);outboxWaiters.delete(uid);w.resolve(value)}}
 function queueWrite(kind,op,target,payload,local,createPayload=null){
- const entry={uid:'w'+Date.now()+Math.random().toString(36).slice(2,7),kind,op,target:String(target),payload,local:local||null,createPayload,user:currentPersonName(),tries:1,sentAt:Date.now(),failed:false};
+ const entry={uid:'w'+Date.now()+Math.random().toString(36).slice(2,7),kind,op,target:String(target),payload,local:local||null,createPayload,user:currentPersonName(),tries:1,sentAt:Date.now(),firstAt:Date.now(),failed:false};
  const all=readOutbox(),prev=all.filter(x=>x.user===entry.user&&outboxTarget(x)===outboxTarget(entry));
  // Un cambio nuevo sobre el mismo elemento sustituye al pendiente. Si el anterior era
  // una creación aún sin confirmar, se conserva para poder reenviarla con los datos nuevos.
@@ -744,7 +744,9 @@ function taskPayload(action,task){return {action,id:String(task.id),parlamentari
 function persistTask(task){return queueWrite('task','create',task.id,taskPayload('crear_tarea',task),{...task})}
 function updateTaskRemote(task){return queueWrite('task','update',task.id,taskPayload('actualizar_tarea',task),{...task},taskPayload('crear_tarea',task))}
 function deleteTaskRemote(task){if(!task)return Promise.resolve(true);return queueWrite('task','delete',task.id,{action:'eliminar_tarea',id:String(task.id),parlamentario:currentPersonName()})}
-function saveToast(ok,done,pendingMsg='Aún sin confirmar en el Excel: se reintentará solo'){showToast(ok?done:pendingMsg,null,ok?'success':'warn')}
+// El cambio se ve y se confirma al instante; la comprobación con el Excel sigue por detrás y
+// solo se avisa si no llega.
+function saveToast(ok,done,pendingMsg='Aún sin confirmar en el Excel: se reintentará solo'){if(!ok)showToast(pendingMsg,null,'warn')}
 function priorityClass(p){p=normPerson(p);return p.includes('urgente')?'task-priority-urgente':p.includes('pronto')?'task-priority-pronto':'task-priority-cuando'}
 function sourceTaskKey(title){return normPerson(title).replace(/\s+/g,' ')}
 function sourceTaskArea(title,areaHint='',personHint=''){
@@ -800,10 +802,10 @@ function openTaskModal(id=null,prefill='',opts={}){
   const title=document.getElementById('taskText').value.trim();if(!title)return;
   const data={title,priority:document.getElementById('taskPriority').value,area:document.getElementById('taskArea').value,when:isoToTaskDate(document.getElementById('taskDate').value)};
   let item;if(editing){tasks=tasks.map(x=>String(x.id)===String(id)?{...x,...data}:x);item=tasks.find(x=>String(x.id)===String(id))}else{item={id:Date.now(),...data,done:false};tasks.push(item);if(opts.onCreated)opts.onCreated(item,!!document.getElementById('taskArchiveSource')?.checked)}
-  saveTasksLocal();document.getElementById('modal').innerHTML='';render();showToast('Guardando…',null,'info');
+  saveTasksLocal();document.getElementById('modal').innerHTML='';render();showToast(editing?'Tarea actualizada':'Tarea guardada');
   const ok=await (editing?updateTaskRemote(item):persistTask(item));saveToast(ok,editing?'Tarea actualizada':'Tarea guardada en el Excel');
  };
- const del=document.getElementById('deleteTask');if(del)del.onclick=async()=>{const item=tasks.find(x=>String(x.id)===String(id));tasks=tasks.filter(x=>String(x.id)!==String(id));saveTasksLocal();document.getElementById('modal').innerHTML='';render();showToast('Eliminando…',null,'info');const ok=await deleteTaskRemote(item);saveToast(ok,'Tarea eliminada')};
+ const del=document.getElementById('deleteTask');if(del)del.onclick=async()=>{const item=tasks.find(x=>String(x.id)===String(id));tasks=tasks.filter(x=>String(x.id)!==String(id));saveTasksLocal();document.getElementById('modal').innerHTML='';render();showToast('Tarea eliminada');const ok=await deleteTaskRemote(item);saveToast(ok,'Tarea eliminada')};
 }
 const EVENTO_DESTINATARIOS=['Alba Langarica','Santi López','Laura Garrido','Javier de Andrés','Ainhoa Domaica','Ana Morales','Álvaro Gotxi','Muriel Larrea'];
 function canManageAgendaEvents(){const n=normPerson(currentPersonName());return n==='santi lopez'||n==='jorge panera'||(isAdmin()&&n==='alba langarica')}
@@ -842,18 +844,18 @@ function openEventModal(id=null){
   document.getElementById('modal').innerHTML='';
   if(editing){
    const merged={...x,...data};
-   agendaItems=agendaItems.map(e=>String(e.id_evento)===String(id)?merged:e);render();showToast('Guardando…',null,'info');
+   agendaItems=agendaItems.map(e=>String(e.id_evento)===String(id)?merged:e);render();showToast('Evento actualizado');
    const ok=await actualizarEventoRemote(merged);saveToast(ok,'Evento actualizado');
   }else{
    const tempId=generateEventoId();
    const item={...data,id_evento:tempId,creado_por:currentPersonName(),estado:'Activo'};
-   agendaItems=[...agendaItems,item];render();showToast('Guardando…',null,'info');
+   agendaItems=[...agendaItems,item];render();showToast('Evento guardado');
    const ok=await persistEvento(item);saveToast(ok,'Evento guardado');
   }
  };
  const del=document.getElementById('deleteEvento');if(del)del.onclick=async()=>{
   agendaItems=agendaItems.filter(e=>String(e.id_evento)!==String(id));document.getElementById('modal').innerHTML='';render();
-  showToast('Cancelando…',null,'info');const ok=await cancelarEventoRemote(id);saveToast(ok,'Evento cancelado');
+  showToast('Evento cancelado');const ok=await cancelarEventoRemote(id);saveToast(ok,'Evento cancelado');
  };
 }
 // ---- Datos desde el servidor ----
@@ -1094,7 +1096,7 @@ async function guardedLoadData(){
 function syncBannerHTML(){
  if(!session)return '';
  const parts=[];let cls='';
- const out=myOutbox(),failed=out.filter(x=>x.failed).length,waiting=out.length-failed;
+ const out=myOutbox(),failed=out.filter(x=>x.failed).length,waiting=out.filter(x=>!x.failed&&Date.now()-(x.firstAt||x.sentAt||0)>20000).length;
  if(firstLoadPending){parts.push('<span>Actualizando datos…</span>');cls='loading'}
  if(sourceErrors.size)parts.push(`<span>No se ha podido actualizar: <b>${esc([...sourceErrors].join(', '))}</b>. Se muestra la última copia guardada.</span><button type="button" data-sync-retry>Reintentar</button>`);
  if(failed)parts.push(`<span><b>${failed} ${failed===1?'cambio no se ha':'cambios no se han'} podido guardar</b> en el Excel.</span><button type="button" data-outbox-retry>Reintentar</button><button type="button" data-outbox-discard>Descartar</button>`);
@@ -1776,7 +1778,7 @@ function bind(){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha)){showToast('Falta una fecha válida para añadirlo a agenda');return}
   if(buzonItemInAgenda(item)){showToast('Ya está en tu agenda');return}
   const ev={event_date:fecha,event_time:item.hora||'Hora por confirmar',type:'Reunión',organ_activity:item.asunto||'Evento',location:item.lugar||'',detail:item.resumen||'',expediente_link:item.enlaceDocumento||item.enlaceCorreo||'',parlamentario:'Santi López',area_label:'',id_evento:BUZON_EVENT_PREFIX+generateEventoId().slice(4),creado_por:currentPersonName(),estado:'Activo'};
-  agendaItems=[...agendaItems,ev];render();showToast('Guardando…',null,'info');
+  agendaItems=[...agendaItems,ev];render();showToast('Añadido a tu agenda');
   const ok=await persistEvento(ev);
   saveToast(ok,'Añadido a tu agenda');
  });
@@ -1831,7 +1833,7 @@ function bind(){
   tasks=tasks.map(x=>String(x.id)===String(id)?{...x,done:!x.done}:x);
   const item=tasks.find(x=>String(x.id)===String(id));
   saveTasksLocal();render();
-  const ok=await updateTaskRemote(item);saveToast(ok,item.done?'Tarea completada':'Tarea reabierta');
+  showToast(item.done?'Tarea completada':'Tarea reabierta');const ok=await updateTaskRemote(item);saveToast(ok,'');
  });
 
 
