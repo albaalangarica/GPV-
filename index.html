@@ -168,6 +168,8 @@ button{font-family:inherit}
 .nh-row.pleno .nh-title{font-weight:800}
 .nh-ico{flex:0 0 auto;display:flex;color:var(--electric);padding:4px}
 .nh-row .cal-btn{flex:0 0 auto;display:inline-flex!important;padding:4px!important;font-size:17px!important;line-height:1;background:none;border:0;cursor:pointer}
+.nh-doc{text-decoration:none;color:var(--electric)!important}
+.nh-x{flex:0 0 auto;border:0;background:none;color:var(--slate);font-size:15px;cursor:pointer;padding:6px 10px}
 .nh-state{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--slate);white-space:nowrap}
 .nh-state.ok{color:var(--success)}
 .nh-state.warn{color:var(--danger)}
@@ -1500,6 +1502,8 @@ function bancoDatos(){
 // Se muestran a todos en el Panel general, en este orden (el primero arriba).
 // Para añadir uno: {titulo:'…', enlace:'https://…', fecha:'dd/mm/aaaa', descripcion:'…'} (carpeta:true si es una carpeta)
 const REPO_DESTACADOS=[
+ {titulo:'Informe coste de vida en Euskadi por provincias',enlace:'https://drive.google.com/file/d/1VazGb7GYwFvXwzN_239j-rMrcKff8sXH/view',fecha:'14/10/2026',descripcion:'PDF · Repositorio GPV / 00.- GENERAL'},
+ {titulo:'Informe coste de vida en Euskadi',enlace:'https://drive.google.com/file/d/1jR8l4xTgKw4H5b8OJFZFURgymvx3DQHI/view',fecha:'14/10/2026',descripcion:'PDF · Repositorio GPV / 00.- GENERAL'},
  {titulo:'Balística ertzaintza',enlace:'https://drive.google.com/drive/folders/15qDVkm64WnbMow0IIDwWJyw5AnMOJbLE',fecha:'01/10/2026',descripcion:'Carpeta · Drive compartido GPV / AINHOA',carpeta:true},
  {titulo:'CMC Competencia Alokabide',enlace:'https://drive.google.com/drive/folders/1aUvZ-kynXZOAz1zihzGLKbN1QapIzR30',fecha:'01/10/2026',descripcion:'Carpeta · Drive compartido GPV / ANA',carpeta:true},
  {titulo:'Evaluación de programas subvencionales',enlace:'https://drive.google.com/drive/folders/16WkkpsQcDCGFxNqmV8bH_7JFKzJRG_Nf',fecha:'30/09/2026',descripcion:'Carpeta · Drive compartido GPV / GENERAL',carpeta:true}
@@ -2006,6 +2010,15 @@ function nhAgendaRow(x,withDay){
  const when=withDay?`${nhShortDate(x.event_date)}${time?'<br>'+esc(time):''}`:(time?esc(time):'Día');
  return `<div class="nh-row ${pleno?'pleno':''} ${niIsPastToday(x)?'past':''}"><span class="nh-bar" style="background:${NH_TAG_COLOR[tag.cls]||'var(--slate)'}"></span><span class="nh-time">${when}</span><span class="nh-title">${pleno?'★ ':''}${esc(agendaTitleParts(x).title)}</span>${order?`<a class="nh-ico" href="${esc(order)}" target="_blank" rel="noopener" title="Orden del día" aria-label="Orden del día">${ico('document',18)}</a>`:''}${calendarButtonHTML(agendaCalendarEvent(x),'📅')}</div>`;
 }
+function nhDocVistoKey(d){return 'gpvDocVisto:'+notificationUserKey()+':'+d.enlace}
+function nhDocsNuevos(){
+ const desde=plusDaysISO(todayISO(),-7);
+ return REPO_DESTACADOS.filter(d=>{const iso=niPlazoISO(d.fecha);if(!iso||iso<desde)return false;try{return !localStorage.getItem(nhDocVistoKey(d))}catch(e){return true}});
+}
+function nhDocsAviso(){
+ const docs=nhDocsNuevos();if(!docs.length)return '';
+ return `<section class="nh-sec"><div class="nh-head"><h2>📄 Nuevo en el repositorio</h2></div><div class="nh-list">${docs.map(d=>`<div class="nh-row"><span class="nh-bar" style="background:var(--electric)"></span><a class="nh-title nh-doc" href="${esc(d.enlace)}" target="_blank" rel="noopener" data-doc-visto="${esc(d.enlace)}">${esc(d.titulo)}</a><button type="button" class="nh-x" data-doc-cerrar="${esc(d.enlace)}" aria-label="Quitar aviso">✕</button></div>`).join('')}</div></section>`;
+}
 function niHome(){
  const ident=displayIdentity(),first=String(ident.name||'').split(' ')[0];
  const hoy=todayISO(),manana=plusDaysISO(hoy,1),up=niOwnUpcoming();
@@ -2056,7 +2069,7 @@ function niHome(){
   const r=radarInWindow(1,true).slice(0,2);
   radarSec=nhSec('Radar',nhMore('data-tab="Radar"'),`<div class="nh-list">${r.length?r.map(x=>`<${x.url?`a href="${esc(x.url)}" target="_blank" rel="noopener"`:'div'} class="nh-row"><span class="nh-bar" style="background:var(--electric)"></span><span class="nh-title">${esc(x.titulo)}</span>${x.fuente?`<span class="nh-state">${esc(x.fuente)}</span>`:''}</${x.url?'a':'div'}>`).join(''):'<div class="nh-row empty">Nada nuevo hoy.</div>'}</div>`);
  }
- return top+`<div class="wrap nh-cols"><div>${agendaSec}${dlSec}</div><div>${impSec}${taskSec}${radarSec}</div></div><div style="height:16px"></div>`;
+ return top+`<div class="wrap">${nhDocsAviso()}</div><div class="wrap nh-cols"><div>${agendaSec}${dlSec}</div><div>${impSec}${taskSec}${radarSec}</div></div><div style="height:16px"></div>`;
 }
 
 // Bloque del Inicio: las iniciativas importantes (las mías; en administración, las de todo el grupo).
@@ -2303,6 +2316,9 @@ function niBind(){
  on('[data-ag-scope]',b=>{agScope=b.dataset.agScope;render()});
  on('[data-as-tipo]',b=>{asTipo=b.dataset.asTipo;render()});
  {const sel=document.getElementById('asPersona');if(sel)sel.onchange=()=>{asPersona=sel.value;render()}}
+ {const marcar=enlace=>{const d=REPO_DESTACADOS.find(x=>x.enlace===enlace);if(d){try{localStorage.setItem(nhDocVistoKey(d),'1')}catch(e){}}};
+  document.querySelectorAll('[data-doc-visto]').forEach(a=>a.addEventListener('click',()=>{marcar(a.dataset.docVisto);setTimeout(render,300)}));
+  on('[data-doc-cerrar]',b=>{marcar(b.dataset.docCerrar);render()});}
  on('[data-nh-dia]',b=>{nhDia=b.dataset.nhDia;render()});
  on('[data-in-otros]',()=>{inOtros=!inOtros;render()});
  on('[data-in-vista]',b=>{inVista=b.dataset.inVista;inMes=todayISO().slice(0,7);inDia=todayISO();render()});
