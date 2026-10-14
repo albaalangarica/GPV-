@@ -170,6 +170,7 @@ button{font-family:inherit}
 .nh-row .cal-btn{flex:0 0 auto;display:inline-flex!important;padding:4px!important;font-size:17px!important;line-height:1;background:none;border:0;cursor:pointer}
 .nh-doc{text-decoration:none;color:var(--electric)!important}
 .nh-x{flex:0 0 auto;border:0;background:none;color:var(--slate);font-size:15px;cursor:pointer;padding:6px 10px}
+.doc-quitar{float:right;margin-left:10px;border:1px solid #f3c4c4;background:#fdecec;color:var(--danger);border-radius:999px;padding:4px 10px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
 .nh-state{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--slate);white-space:nowrap}
 .nh-state.ok{color:var(--success)}
 .nh-state.warn{color:var(--danger)}
@@ -740,7 +741,7 @@ function applyRemoteUserState(remoteTasks,remoteDiscards){
 }
 async function refreshRemoteUserState(){
  if(remoteRefreshBusy||!session?.user)return;remoteRefreshBusy=true;
- try{const [remoteTasks,remoteDiscards,imp]=await Promise.all([loadRemoteTasks(),loadRemoteDismissals(),loadRemoteImportantes()]);const beforeImp=JSON.stringify(remoteImportantes);if(Array.isArray(imp))remoteImportantes=imp;if(beforeImp!==JSON.stringify(remoteImportantes))scheduleRender();const beforeTasks=JSON.stringify(tasks),beforeDiscards=[...remoteDismissed].sort().join('|');applyRemoteUserState(remoteTasks,remoteDiscards);if(beforeTasks!==JSON.stringify(tasks)||beforeDiscards!==[...remoteDismissed].sort().join('|'))scheduleRender()}finally{remoteRefreshBusy=false}
+ cargarDocsOcultos();try{const [remoteTasks,remoteDiscards,imp]=await Promise.all([loadRemoteTasks(),loadRemoteDismissals(),loadRemoteImportantes()]);const beforeImp=JSON.stringify(remoteImportantes);if(Array.isArray(imp))remoteImportantes=imp;if(beforeImp!==JSON.stringify(remoteImportantes))scheduleRender();const beforeTasks=JSON.stringify(tasks),beforeDiscards=[...remoteDismissed].sort().join('|');applyRemoteUserState(remoteTasks,remoteDiscards);if(beforeTasks!==JSON.stringify(tasks)||beforeDiscards!==[...remoteDismissed].sort().join('|'))scheduleRender()}finally{remoteRefreshBusy=false}
 }
 function taskPayload(action,task){return {action,id:String(task.id),parlamentario:currentPersonName(),tarea:task.title,area:task.area||'',prioridad:task.priority||'Pronto',fecha:task.when||'Sin fecha',estado:task.done?'Hecho':'Pendiente'}}
 function persistTask(task){return queueWrite('task','create',task.id,taskPayload('crear_tarea',task),{...task})}
@@ -1508,6 +1509,26 @@ const REPO_DESTACADOS=[
  {titulo:'CMC Competencia Alokabide',enlace:'https://drive.google.com/drive/folders/1aUvZ-kynXZOAz1zihzGLKbN1QapIzR30',fecha:'01/10/2026',descripcion:'Carpeta · Drive compartido GPV / ANA',carpeta:true},
  {titulo:'Evaluación de programas subvencionales',enlace:'https://drive.google.com/drive/folders/16WkkpsQcDCGFxNqmV8bH_7JFKzJRG_Nf',fecha:'30/09/2026',descripcion:'Carpeta · Drive compartido GPV / GENERAL',carpeta:true}
 ];
+// ---- Quitar documentos de «Últimos documentos» (solo Alba, para todos) ----
+// Se guarda en la pestaña de descartes del Excel bajo el usuario «Repositorio», con el enlace
+// del documento; así funciona con el Apps Script actual y todos lo leen igual.
+const DOCS_OCULTOS_USUARIO='Repositorio',DOCS_OCULTOS_KEY='gpvDocsOcultos:v1';
+let docsOcultos=new Set((()=>{try{return JSON.parse(localStorage.getItem(DOCS_OCULTOS_KEY)||'[]')}catch(e){return []}})()),docsAbiertos=false;
+function guardarDocsOcultos(){try{localStorage.setItem(DOCS_OCULTOS_KEY,JSON.stringify([...docsOcultos]))}catch(e){}}
+function puedeQuitarDocs(){return isAdmin()&&normPerson(currentPersonName())==='alba langarica'}
+function repoDocsVisibles(){return REPO_DESTACADOS.filter(d=>!docsOcultos.has('doc:'+d.enlace))}
+async function cargarDocsOcultos(){
+ try{const data=await apiJsonp('listar_descartes',{usuario:DOCS_OCULTOS_USUARIO});if(!data||!data.ok||!Array.isArray(data.descartes))return;
+  const nuevo=new Set(data.descartes.map(x=>String(x.item_id||'')).filter(k=>k.startsWith('doc:')));
+  if([...nuevo].sort().join('|')!==[...docsOcultos].sort().join('|')){docsOcultos=nuevo;guardarDocsOcultos();scheduleRender()}
+ }catch(e){}
+}
+function quitarDoc(enlace,volver=false){
+ const k='doc:'+enlace;volver?docsOcultos.delete(k):docsOcultos.add(k);guardarDocsOcultos();
+ taskApi({action:volver?'restaurar_descarte':'descartar_item',usuario:DOCS_OCULTOS_USUARIO,tipo:'buzon',item_id:k});
+ render();
+ if(!volver)showToast('Quitado de Últimos documentos para todos',()=>quitarDoc(enlace,true));
+}
 // ---- Buscador del repositorio ----
 // El script de Google guarda en la pestaña Repositorio_indice la lista de documentos del
 // repositorio (se actualiza una vez al día); aquí se busca en esa lista, sin esperar a Drive.
@@ -1551,9 +1572,9 @@ function panelGeneral(){
  const accesos=[...baseAccess,{title:'Banco de imágenes',desc:'Archivo compartido de imágenes del grupo.',url:'https://hodei.legebiltzarra.eus/index.php/s/hFnkUZhwILvJVA9'}].map(a=>{const t=String(a.title||'');return {...a,icon:/banco de im[aá]genes/i.test(t)?'▧':/banco de datos/i.test(t)?'▦':/guion|reuni[oó]n/i.test(t)?'☰':'▣',go:/banco de datos/i.test(t)?'Banco de Datos':''}});
  const html=accesos.map(a=>a.go?`<button type="button" class="hubcard" data-go="${a.go}"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></button>`:(a.url?`<a class="hubcard" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div><div class="hubarrow">›</div></a>`:`<div class="hubcard"><div class="hubicon">${a.icon}</div><div class="hubtext"><b>${esc(a.title)}</b><span>${esc(a.desc||'')}</span></div></div>`)).join('');
  // Documentos elegidos a mano (REPO_DESTACADOS).
- const docs=REPO_DESTACADOS;
- const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item"><b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">${d.carpeta?'Abrir carpeta →':'Abrir documento →'}</a>`:''}</div>`).join(''):`<div class="newdoc-empty">Todavía no hay documentos destacados.</div>`;
- const docsDropdown=`<details class="newdocs"><summary>ÚLTIMOS DOCUMENTOS DEL REPOSITORIO <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
+ const docs=repoDocsVisibles(),quitar=puedeQuitarDocs();
+ const docsBody=docs.length?docs.map(d=>`<div class="newdoc-item">${quitar?`<button type="button" class="doc-quitar" data-doc-quitar="${esc(d.enlace)}">Quitar</button>`:''}<b>${esc(d.titulo)}</b>${d.descripcion?`<small>${esc(d.descripcion)}</small>`:''}${d.fecha?`<small>${esc(d.fecha)}</small>`:''}${/^https?:\/\//i.test(d.enlace)?`<a href="${esc(d.enlace)}" target="_blank" rel="noopener noreferrer">${d.carpeta?'Abrir carpeta →':'Abrir documento →'}</a>`:''}</div>`).join(''):`<div class="newdoc-empty">Todavía no hay documentos destacados.</div>`;
+ const docsDropdown=`<details class="newdocs" ${docsAbiertos?'open':''} data-docs-desplegable><summary>ÚLTIMOS DOCUMENTOS DEL REPOSITORIO <span class="newdocs-count">${docs.length}</span></summary><div class="newdocs-list">${docsBody}</div></details>`;
  const santiFolder=normPerson(currentPersonName())==='santi lopez'?`<a class="hubcard" href="https://drive.google.com/drive/folders/10mjx-n2F5KmkZOM26QmeLxxyZ10c4ciF" target="_blank" rel="noopener noreferrer"><div class="hubicon">📁</div><div class="hubtext"><b>Mi carpeta · Santi</b><span>Abrir directamente tu carpeta del Drive compartido GPV.</span></div><div class="hubarrow">›</div></a>`:'';
  return `<div class="pageintro"><h2>Panel general</h2><p>Herramientas y recursos comunes del Grupo Popular Vasco</p></div>${repoSearchBlock()}${docsDropdown}${santiFolder?`<div class="hubgrid" style="margin-bottom:10px">${santiFolder}</div>`:''}<div class="hubgrid">${html}</div>`
 }
@@ -2013,7 +2034,7 @@ function nhAgendaRow(x,withDay){
 function nhDocVistoKey(d){return 'gpvDocVisto:'+notificationUserKey()+':'+d.enlace}
 function nhDocsNuevos(){
  const desde=plusDaysISO(todayISO(),-7);
- return REPO_DESTACADOS.filter(d=>{const iso=niPlazoISO(d.fecha);if(!iso||iso<desde)return false;try{return !localStorage.getItem(nhDocVistoKey(d))}catch(e){return true}});
+ return repoDocsVisibles().filter(d=>{const iso=niPlazoISO(d.fecha);if(!iso||iso<desde)return false;try{return !localStorage.getItem(nhDocVistoKey(d))}catch(e){return true}});
 }
 function nhDocsAviso(){
  const docs=nhDocsNuevos();if(!docs.length)return '';
@@ -2319,6 +2340,8 @@ function niBind(){
  {const marcar=enlace=>{const d=REPO_DESTACADOS.find(x=>x.enlace===enlace);if(d){try{localStorage.setItem(nhDocVistoKey(d),'1')}catch(e){}}};
   document.querySelectorAll('[data-doc-visto]').forEach(a=>a.addEventListener('click',()=>{marcar(a.dataset.docVisto);setTimeout(render,300)}));
   on('[data-doc-cerrar]',b=>{marcar(b.dataset.docCerrar);render()});}
+ on('[data-doc-quitar]',b=>quitarDoc(b.dataset.docQuitar));
+ document.querySelectorAll('[data-docs-desplegable]').forEach(d=>d.addEventListener('toggle',()=>{docsAbiertos=d.open}));
  on('[data-nh-dia]',b=>{nhDia=b.dataset.nhDia;render()});
  on('[data-in-otros]',()=>{inOtros=!inOtros;render()});
  on('[data-in-vista]',b=>{inVista=b.dataset.inVista;inMes=todayISO().slice(0,7);inDia=todayISO();render()});
