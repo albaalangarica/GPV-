@@ -138,7 +138,7 @@ button{font-family:inherit}
 .nh-hello{margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sky)}
 .nh-date{margin:4px 0 0;color:#fff;font-size:clamp(22px,6.6vw,30px);font-weight:700;letter-spacing:-.03em;line-height:1.08}
 .nh-pleno{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 14px;border-radius:12px;background:var(--electric);color:#fff;font-size:14px;font-weight:700;text-decoration:none}
-.nh-presu{display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:11px 14px;border-radius:12px;border:0;background:#7a1f33;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;text-align:left}
+.nh-presu{display:flex;text-decoration:none;box-sizing:border-box;align-items:center;gap:8px;width:100%;margin-top:8px;padding:11px 14px;border-radius:12px;border:0;background:#7a1f33;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;text-align:left}
 .nh-presu b{white-space:nowrap;flex:0 0 auto}
 .nh-presu span{flex:1;min-width:0;text-align:right;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .presu-head{background:#5c1626}
@@ -2092,8 +2092,7 @@ function niHome(){
   `<button type="button" class="nh-tile" data-tab="Radar"><b>${radarInWindow(1,true).length}</b><small>Radar hoy</small></button>`,
   `<button type="button" class="nh-tile" data-tab="Iniciativas"><b>${ico('document',20)}</b><small>Iniciativas</small></button>`
  ].filter(Boolean).slice(0,4).join('');
- const pp=presuProximo();
- const presuLine=`<button type="button" class="nh-presu press" data-tab="Presupuestos"><b>📊 Presupuestos 2027</b><span>${pp?esc(niRelDay(pp.fecha)+': '+pp.titulo):'Ver'} ›</span></button>`;
+ const presuLine=`<a class="nh-presu press" href="${PRESU_CALENDARIO_URL}" target="_blank" rel="noopener"><b>📊 Presupuestos 2027</b><span>Calendario ›</span></a>`;
  const top=`<section class="nh-top"><div class="wrap"><p class="nh-hello">Hola, ${esc(first)}</p><h1 class="nh-date">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</h1>${plenoLine}${presuLine}<div class="nh-tiles">${tiles}</div></div></section>`;
 
  // Agenda: Hoy · Mañana · Semana, en filas.
@@ -2388,6 +2387,7 @@ function niPanel(){
   inbox!==null?tile('data-tab="Buzón"','inbox',`Buzón${inbox?` · ${inbox}`:''}`,'Correos y convocatorias que te afectan'):'',
   taskUserEnabled()?tile('data-go="Tareas"','tasks','Tareas','Tus pendientes con fecha y urgencia'):'',
   tile('data-tab="Radar"','radar','Radar','Noticias, BOPV y avisos del Gobierno Vasco'),
+  tile('data-tab="Presupuestos"','calendar','Presupuestos 2027','Comparecencias, responsables y documentos'),
   hasGroupView()?tile('data-tab="Grupo"','users','Panel del grupo','Seguimiento de todo el grupo'):'',
   hasPendientesView()?tile('data-tab="Pendientes"','list','Pendientes','Asuntos pendientes y asignaciones'):'',
   isPrensa()?tile('data-tab="Orden"','calendar','Orden del día','Asuntos de hoy de todo el grupo'):'',
