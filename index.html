@@ -2255,7 +2255,7 @@ function niMas(){
 }
 
 // ---- Presupuestos 2027 ----
-const PRESU_CALENDARIO_URL='https://drive.google.com/file/d/11b0rlDVuLPpv9pD4kqxZPoprMahsrGuq/view?usp=drive_link';
+const PRESU_CALENDARIO_URL='https://drive.google.com/file/d/1UpvWCjrbW45KADRzshSVY_9mr0TrG60S/view?usp=drive_link';
 function presuProximo(){const hoy=todayISO();return (presuItems||[]).filter(x=>presuEsEvento(x)&&x.fecha>=hoy).sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora))[0]||null}
 function presuFila(x){
  const hoy=todayISO(),pasado=x.fecha<hoy,mio=!presuParaTodos(x)&&presuParaMi(x);
