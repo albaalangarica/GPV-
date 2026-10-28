@@ -32,6 +32,7 @@ const PESTANAS_SINCRONIZADAS = {
   santi_cosas: [ID_EXCEL_PRINCIPAL, 'Santi_Cosas'],
   alba_cosas: [ID_EXCEL_PRINCIPAL, 'Alba_Cosas'],
   repositorio: [ID_EXCEL_PRINCIPAL, 'Repositorio_indice'],
+  presupuestos: [ID_EXCEL_PRINCIPAL, 'Presupuestos 2027'],
   bopv: [ID_EXCEL_BOPV, 'Entradas BOPV'],
   banco_datos: [ID_EXCEL_BANCO_DATOS, null]
 };
