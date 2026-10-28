@@ -897,7 +897,7 @@ const PRESUPUESTOS_CSV_URL='https://docs.google.com/spreadsheets/d/1xUZ1Q7XDGQCw
 async function loadPresupuestos(){
  const rows=await sheetRowsFor('presupuestos',PRESUPUESTOS_CSV_URL);if(!rows.length)return [];
  const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n),v=(r,n)=>ix(n)>=0?String(r[ix(n)]||'').trim():'';
- return rows.slice(1).filter(r=>v(r,'Título')).map((r,i)=>({id:'PRE-'+i,fecha:sheetDateToISO(v(r,'Fecha')),hora:v(r,'Hora'),tipo:v(r,'Tipo'),titulo:v(r,'Título'),lugar:v(r,'Lugar'),para:v(r,'Para quién'),depto:v(r,'Departamento'),enlace:v(r,'Enlace'),notas:v(r,'Notas')}));
+ return rows.slice(1).filter(r=>v(r,'Título')).map((r,i)=>({id:'PRE-'+i,fecha:sheetDateToISO(v(r,'Fecha')),hora:v(r,'Hora').replace(/^(\d{1,2}:\d{2}):\d{2}$/,'$1'),tipo:v(r,'Tipo'),titulo:v(r,'Título'),lugar:v(r,'Lugar'),para:v(r,'Para quién'),depto:v(r,'Departamento'),enlace:v(r,'Enlace'),notas:v(r,'Notas')}));
 }
 function presuParaTodos(x){const p=normPerson(x.para||x.parlamentario||'');return !p||p==='todos'||p==='todo el grupo'||p==='grupo'}
 function presuParaMi(x){if(presuParaTodos(x))return true;return String(x.para||x.parlamentario||'').split(/\s*(?:,|;|\/|\+|\by\b)\s*/i).filter(Boolean).some(isOwnPersonLabel)}
