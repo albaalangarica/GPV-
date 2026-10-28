@@ -2297,11 +2297,12 @@ function niAsignadasData(){
 }
 // Enlace a la ficha de la iniciativa en el Parlamento. Solo se aceptan fichas del Parlamento
 // (no correos ni otras webs). Las fichas con sesión caducable se pasan al formato público.
+// Si no se puede sacar el número de la ficha, mejor sin enlace que llevar a la portada.
 function niFichaParlamento(url){
  let u=String(url||'').trim();try{if(/%3A|%2C/i.test(u))u=decodeURIComponent(u)}catch(e){}
  if(!/^https?:\/\/(www\.)?legebiltzarra\.eus\//i.test(u))return '';
  const id=(u.match(/P18_ID,P18_EXPAND:(\d+)/)||u.match(/P18_ID:Y,(\d+)/)||[])[1];
- return id?`https://www.legebiltzarra.eus/ords/f?p=CTP:INICIATIVA_DETALLE::::SESSION:RESETBRCRMB,P18_ID:Y,${id}&p_lang=es`:u;
+ return id?`https://www.legebiltzarra.eus/ords/f?p=CTP:INICIATIVA_DETALLE::::SESSION:RESETBRCRMB,P18_ID:Y,${id}&p_lang=es`:'';
 }
 function niEnlaceIniciativa(x){
  const directo=niFichaParlamento(x.enlace);if(directo)return directo;
