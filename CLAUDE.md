@@ -40,6 +40,10 @@ Hablar con Alba en español, sin tecnicismos.
   usuario: tocando las iniciales arriba a la derecha.
 - Menos clics y menos líneas; filtros siempre a la vista (sin deslizar).
 - Iniciativas importantes: hasta 3 por parlamentario, pestaña «Importantes» del Excel.
+- Presupuestos 2027: banner granate en Inicio → página propia (tab 'Presupuestos'). Datos en la
+  pestaña «Presupuestos 2027» (Fecha, Hora, Tipo, Título, Lugar, Para quién, Departamento, Enlace,
+  Notas). Los eventos entran en la agenda (categoría Presupuestos) de quien figure en «Para quién»;
+  vacío o «Todos» = todo el grupo. Tipo «Documento» = va a la lista de documentos.
 
 ## Pendiente
 - Alba debe actualizar `Codigo.gs` en Apps Script para que se guarden las importantes.

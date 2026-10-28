@@ -138,6 +138,19 @@ button{font-family:inherit}
 .nh-hello{margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--sky)}
 .nh-date{margin:4px 0 0;color:#fff;font-size:clamp(22px,6.6vw,30px);font-weight:900;letter-spacing:-.03em;line-height:1.08}
 .nh-pleno{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 14px;border-radius:12px;background:var(--electric);color:#fff;font-size:14px;font-weight:700;text-decoration:none}
+.nh-presu{display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;padding:11px 14px;border-radius:12px;border:0;background:#7a1f33;color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;text-align:left}
+.nh-presu b{white-space:nowrap;flex:0 0 auto}
+.nh-presu span{flex:1;min-width:0;text-align:right;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.presu-head{background:#5c1626}
+.presu-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.presu-txt b{font-size:14px;line-height:1.3;color:var(--night)}
+.presu-txt small{font-size:12px;color:var(--slate);line-height:1.35}
+.presu-head .eyebrow{color:#f3c4cf}
+.presu-hito{margin-top:14px;padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.1);max-width:560px}
+.presu-hito small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f3c4cf}
+.presu-hito b{display:block;margin-top:4px;font-size:17px}
+.presu-hito span{display:block;margin-top:2px;font-size:13px;color:rgba(255,255,255,.75)}
+.ni-tag.agenda-tag-presu{background:#f5e3e7;color:#7a1f33}
 .nh-pleno span{margin-left:auto;white-space:nowrap}
 .nh-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
 .nh-tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;text-decoration:none;cursor:pointer;font:inherit}
@@ -493,7 +506,7 @@ const AREA_KEYWORDS={
  'Deporte':['deporte','deportivo'], 'Educación':['educacion','escuela','ope','maestro','euskera','alumno'], 'Ciencia, Universidades e Innovación':['ciencia','universidad','innovacion','investigacion'],
  'Lehendakaritza':['lehendakaritza','lehendakari','pradales'], 'Política Lingüística':['politica linguistica','euskera','euskara'], 'Salud':['salud','osasun','hospital','sanidad'], 'Bienestar, Juventud y Reto Demográfico':['bienestar','juventud','reto demografico','demografi','natalidad']
 };
-let session=null,profile=null,agendaItems=[],plazoItems=[],initiativeItems=[],assignedItems=[],radarItems=[],bopvItems=[],accessItems=[],pendingItems=[],newDocsItems=[],personalDocsItems=[],santiCosasItems=[],albaCosasItems=[],bancoDatosItems=[],bancoDatosLoaded=false,bancoDatosLoading=false,bancoDatosDep='Todos',bancoDatosSearch='',tab='Inicio',agendaFilters=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta','Otros']),homeTaskFilter='Urgente',initiativeFilter='Todas',initiativeTypeFilter='Todos',homeInitiativeFilter='Todas',adminParlamentarioFilter='Todos',radarParlamentarioFilter='Todos',groupParlamentarioFilter='Todos';
+let session=null,profile=null,agendaItems=[],plazoItems=[],initiativeItems=[],assignedItems=[],radarItems=[],bopvItems=[],accessItems=[],pendingItems=[],newDocsItems=[],personalDocsItems=[],santiCosasItems=[],albaCosasItems=[],bancoDatosItems=[],bancoDatosLoaded=false,bancoDatosLoading=false,bancoDatosDep='Todos',bancoDatosSearch='',tab='Inicio',agendaFilters=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta','Presupuestos','Otros']),homeTaskFilter='Urgente',initiativeFilter='Todas',initiativeTypeFilter='Todos',homeInitiativeFilter='Todas',adminParlamentarioFilter='Todos',radarParlamentarioFilter='Todos',groupParlamentarioFilter='Todos';
 let toastTimer=null,pendingUndo=null,startupNotificationsChecked=false,appNotificationTimer=null;
 const app=document.getElementById('app');
 const BUZON_PASSWORD='1234';
@@ -876,6 +889,21 @@ function contentSnapshot(){
  contentSnapshotPromise=p;p.catch(()=>{if(contentSnapshotPromise===p)contentSnapshotPromise=null});
  return p;
 }
+// ---- Presupuestos 2027 (pestaña del Excel con el mismo nombre) ----
+// Fecha | Hora | Tipo | Título | Lugar | Para quién | Departamento | Enlace | Notas
+// «Para quién» vacío o «Todos» = todo el grupo; si no, solo las personas nombradas.
+let presuItems=[];
+const PRESUPUESTOS_CSV_URL='https://docs.google.com/spreadsheets/d/1xUZ1Q7XDGQCw406Woy1imLppYszBJ9cEjk0__fmP3wU/gviz/tq?tqx=out:csv&headers=1&sheet=Presupuestos%202027';
+async function loadPresupuestos(){
+ const rows=await sheetRowsFor('presupuestos',PRESUPUESTOS_CSV_URL);if(!rows.length)return [];
+ const h=rows[0].map(x=>String(x||'').trim()),ix=n=>h.indexOf(n),v=(r,n)=>ix(n)>=0?String(r[ix(n)]||'').trim():'';
+ return rows.slice(1).filter(r=>v(r,'Título')).map((r,i)=>({id:'PRE-'+i,fecha:sheetDateToISO(v(r,'Fecha')),hora:v(r,'Hora'),tipo:v(r,'Tipo'),titulo:v(r,'Título'),lugar:v(r,'Lugar'),para:v(r,'Para quién'),depto:v(r,'Departamento'),enlace:v(r,'Enlace'),notas:v(r,'Notas')}));
+}
+function presuParaTodos(x){const p=normPerson(x.para||x.parlamentario||'');return !p||p==='todos'||p==='todo el grupo'||p==='grupo'}
+function presuParaMi(x){if(presuParaTodos(x))return true;return String(x.para||x.parlamentario||'').split(/\s*(?:,|;|\/|\+|\by\b)\s*/i).filter(Boolean).some(isOwnPersonLabel)}
+function presuEsEvento(x){return /^\d{4}-\d{2}-\d{2}$/.test(x.fecha)&&normPerson(x.tipo)!=='documento'}
+// Los eventos de presupuestos entran en la agenda como una categoría más.
+function presuAgenda(){return (presuItems||[]).filter(presuEsEvento).map(x=>({event_date:x.fecha,event_time:x.hora||'Todo el día',type:x.tipo||'Presupuestos',organ_activity:x.titulo,location:x.lugar,detail:'',parlamentario:x.para,para:x.para,area_label:'Presupuestos',agenda_link:x.enlace,presu:true}))}
 async function sheetRowsFor(clave,csvUrl){
  try{const snap=await contentSnapshot();const e=snap[clave];if(e&&Array.isArray(e.filas)&&e.filas.length)return e.filas.map(r=>Array.isArray(r)?r.map(v=>String(v??'')):[])}
  catch(e){console.warn('Servidor de datos no disponible, se lee el Excel',e)}
@@ -1048,6 +1076,7 @@ const DATA_SOURCES=[
  {key:'iniciativas',label:'Iniciativas',load:()=>loadInitiatives(),get:()=>initiativeItems,set:v=>{initiativeItems=v}},
  {key:'asignadas',label:'Adjudicaciones',load:()=>loadAssigned(),get:()=>assignedItems,set:v=>{assignedItems=v}},
  {key:'pendientes',label:'Pendientes',load:()=>loadPendientes(),get:()=>pendingItems,set:v=>{pendingItems=v}},
+ {key:'presupuestos',label:'Presupuestos 2027',load:()=>loadPresupuestos(),get:()=>presuItems,set:v=>{presuItems=v}},
  {key:'nuevosDocumentos',label:'Documentos',load:()=>loadNewDocuments(),get:()=>newDocsItems,set:v=>{newDocsItems=v}},
  {key:'documentosPersonales',label:'Documentos personales',load:()=>loadPersonalDocuments(),get:()=>personalDocsItems,set:v=>{personalDocsItems=v}},
  {key:'santiCosas',label:'Buzón',cache:false,load:()=>loadSantiCosas(),get:()=>santiCosasItems,set:v=>{santiCosasItems=v}},
@@ -1192,7 +1221,7 @@ function initiativeLinkHTMLByTitle(title,label='Ver iniciativa →'){
 }
 
 
-function explicitAgendaCategory(x){const a=normPerson(x.area_label||'');if(a==='otros')return 'Otros';if(a==='grupo')return 'Grupo';if(a==='mesa y junta')return 'Mesa y Junta';if(a==='plenos y comisiones')return 'Plenos y Comisiones';return ''}
+function explicitAgendaCategory(x){const a=normPerson(x.area_label||'');if(a==='presupuestos')return 'Presupuestos';if(a==='otros')return 'Otros';if(a==='grupo')return 'Grupo';if(a==='mesa y junta')return 'Mesa y Junta';if(a==='plenos y comisiones')return 'Plenos y Comisiones';return ''}
 function isLeadershipAgenda(x){const t=normPerson(x.type||''),o=normPerson(x.organ_activity||''),d=normPerson(x.detail||''),a=normPerson(x.area_label||'');const all=[t,o,d,a].join(' ');if(a==='otros'||all.includes('mesa de contratacion'))return false;return /(^|\b)mesa(\b|$)/.test(t)||/(^|\b)mesa(\b|$)/.test(o)||/(^|\b)junta(\b|$)/.test(t)||/(^|\b)junta(\b|$)/.test(o)||all.includes('mesa del parlamento')||all.includes('junta de portavoces')||all.includes('reunion de mesa')||all.includes('mesa y junta')}
 function category(x){const t=normPerson(x.type||''),o=normPerson(x.organ_activity||''),d=normPerson(x.detail||''),a=normPerson(x.area_label||''),all=[t,o,d,a].join(' ');const marcada=explicitAgendaCategory(x);if(marcada)return marcada;if(String(x.id_evento||'').trim()&&!isPlenoComisionEvent(x))return 'Grupo';if(all.includes('mesa de contratacion'))return 'Otros';const isPress=all.includes('rueda de prensa')||all.includes('comparecencia ante los medios');if(isPress){const ownPress=all.includes('grupo popular')||all.includes('grupo parlamentario popular')||all.includes('partido popular')||/(^|\s)(pp|gp popular|gp pv|pv-etp)(\s|$)/.test(all);return ownPress?'Grupo':'Otros'}const explicit=explicitAgendaCategory(x);if(explicit)return explicit;if(isLeadershipAgenda(x))return 'Mesa y Junta';if(o.includes('reunion de grupo')||d.includes('reunion de grupo')||o.includes('grupo popular')||d.includes('grupo popular'))return 'Grupo';if(t.includes('pleno')||t.includes('comision'))return 'Plenos y Comisiones';return 'Otros'}
 function todayISO(){const d=new Date(),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`}
@@ -1238,13 +1267,13 @@ function isPlenoComisionEvent(x){const t=normPerson(x.type||''),o=normPerson(x.o
 function isDuplicateOfOfficialSession(x,officialKeys){return !!String(x.id_evento||'').trim()&&isPlenoComisionEvent(x)&&officialKeys.has(x.event_date+'|'+String(x.event_time||'').trim())}
 function visibleAgendaItems(){
  const officialKeys=new Set(agendaItems.filter(x=>!String(x.id_evento||'').trim()&&isPlenoComisionEvent(x)).map(x=>x.event_date+'|'+String(x.event_time||'').trim()));
- return agendaItems.filter(x=>agendaVisibleToCurrent(x)&&!isDuplicateOfOfficialSession(x,officialKeys));
+ return [...agendaItems.filter(x=>agendaVisibleToCurrent(x)&&!isDuplicateOfOfficialSession(x,officialKeys)),...presuAgenda()];
 }
 function buzonItemInAgenda(item){const k=buzonAgendaKey(item.fechaAsunto,item.asunto);return !!k&&agendaItems.some(x=>isManualAgendaEvent(x)&&buzonAgendaKey(x.event_date,x.organ_activity)===k)}
 function isPlenoComisionAgenda(x){const t=normPerson(x.type||''),o=normPerson(x.organ_activity||'');return t.includes('pleno')||o.includes('pleno')||t.includes('comision')||o.includes('comision')}
 function agendaOrderLink(x){if(!isPlenoComisionAgenda(x))return '';const raw=String(x.agenda_link||'').trim();if(/^https?:\/\//i.test(raw))return raw;return AGENDA_KNOWN_LINKS[(x.event_date||'')+'|'+(x.event_time||'')]||''}
 function agendaOrderHTML(x){const link=agendaOrderLink(x);if(link)return `<a class="orderlink" href="${esc(link)}" target="_blank" rel="noopener">Ver orden del día →</a>`;return isPlenoComisionAgenda(x)?'<div class="agenda-detail">No hay enlace todavía disponible</div>':''}
-function agendaEntryTag(x){const c=category(x),t=normPerson(x.type||''),o=normPerson(x.organ_activity||'');if(c==='Otros')return {label:'Otros',cls:'agenda-tag-otros'};if(c==='Grupo')return {label:'Grupo',cls:'agenda-tag-grupo'};if(c==='Mesa y Junta')return {label:'Mesa y Junta',cls:'agenda-tag-mesa'};if(t.includes('pleno')||o.includes('pleno'))return {label:'Pleno',cls:'agenda-tag-pleno'};return {label:'Comisión',cls:'agenda-tag-comision'}}
+function agendaEntryTag(x){const c=category(x),t=normPerson(x.type||''),o=normPerson(x.organ_activity||'');if(c==='Presupuestos')return {label:'Presupuestos',cls:'agenda-tag-presu'};if(c==='Otros')return {label:'Otros',cls:'agenda-tag-otros'};if(c==='Grupo')return {label:'Grupo',cls:'agenda-tag-grupo'};if(c==='Mesa y Junta')return {label:'Mesa y Junta',cls:'agenda-tag-mesa'};if(t.includes('pleno')||o.includes('pleno'))return {label:'Pleno',cls:'agenda-tag-pleno'};return {label:'Comisión',cls:'agenda-tag-comision'}}
 function publicAgendaDetail(value){
  const raw=String(value||'').trim();
  if(!raw)return '';
@@ -1906,7 +1935,7 @@ const NI_DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 const NI_DIAS_LARGOS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const NI_MAS_TABS=new Set(['Mas','Buzón','Tareas','Grupo','Pendientes','Banco de Datos','Orden','Adjudicaciones']);
 let inVista='lista',inMes=null,inDia=null,inOtros=false;
-let agCats=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta']),agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
+let agCats=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta','Presupuestos']),agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
 let niTipo='Todos',niEstado='Todas',niPersona='Todos',niOrden='recientes',niLastTab='';
 
 function niSeesAll(){return isAdmin()||isPrensa()||isEquipo()}
@@ -1931,7 +1960,7 @@ function niTopNav(){
 }
 // Radar y Agenda se abren desde Inicio (y Radar también desde Más); Panel general sí es pestaña.
 function niNavItems(){return isPrensa()?[['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Panel','folder','Panel']]:[['Inicio','home','Inicio'],['Iniciativas','document','Iniciativas'],['Asignadas','tasks','Asignadas'],['Panel','folder','Panel']]}
-function niActiveNav(){if(tab==='Agenda'||tab==='Radar')return 'Inicio';if(NI_MAS_TABS.has(tab))return 'Panel';if(tab==='Solicitudes')return 'Iniciativas';return tab}
+function niActiveNav(){if(tab==='Agenda'||tab==='Radar'||tab==='Presupuestos')return 'Inicio';if(NI_MAS_TABS.has(tab))return 'Panel';if(tab==='Solicitudes')return 'Iniciativas';return tab}
 function niBottomNav(){
  const active=niActiveNav();
  return `<nav class="ni-nav" aria-label="Principal"><ul>${niNavItems().map(([t,i,l])=>`<li><button type="button" data-tab="${t}" class="press ${active===t?'active':''}" ${active===t?'aria-current="page"':''}><span class="ni-navpill">${ico(i,21)}</span><small>${l}</small></button></li>`).join('')}</ul></nav>`;
@@ -1948,6 +1977,7 @@ function renderView(){
   case 'Agenda':page=niAgenda();break;
   case 'Iniciativas':case 'Solicitudes':page=niIniciativas();break;
   case 'Asignadas':page=niAsignadas();break;
+  case 'Presupuestos':page=niPresupuestos();break;
   case 'Radar':page=niPageHeader('Radar','Radar.','Noticias, BOPV y avisos del Gobierno Vasco.','Inicio')+niLegacy(((isPrensa()||isEquipo())?equipoRadar():radar()).replace(/<div class="pageintro">[\s\S]*?<\/div>/,''));break;
   case 'Mas':
   case 'Panel':page=niPanel();break;
@@ -2002,7 +2032,7 @@ function niEmpty(title,text){return `<div class="ni-empty"><b>${esc(title)}</b>$
 // Cada persona ve lo común (plenos y comisiones, grupo, mesa y junta) y lo suyo.
 // Lo personal de los demás no aparece; lo propio de «Otros» solo al pulsar.
 const NI_COMUNES=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta']);
-function niEsMio(x){return NI_COMUNES.has(category(x))||isOwnAgenda(x)}
+function niEsMio(x){if(x.presu)return presuParaMi(x);return NI_COMUNES.has(category(x))||isOwnAgenda(x)}
 function niMiAgenda(){return visibleAgendaItems().filter(x=>niEsMio(x)&&(x.type||'').toLowerCase()!=='vencimiento').sort(niByDate)}
 function niOwnUpcoming(){
  const hoy=todayISO();
@@ -2022,7 +2052,7 @@ function niInboxCount(){
 // Inicio compacto: una franja con la fecha y el pleno, cuatro casillas con números
 // y bloques en filas de una línea. Lo detallado está en cada página.
 let nhDia='hoy';
-const NH_TAG_COLOR={'agenda-tag-pleno':'var(--danger)','agenda-tag-comision':'var(--warning)','agenda-tag-grupo':'var(--electric)','agenda-tag-mesa':'var(--success)'};
+const NH_TAG_COLOR={'agenda-tag-pleno':'var(--danger)','agenda-tag-comision':'var(--warning)','agenda-tag-grupo':'var(--electric)','agenda-tag-mesa':'var(--success)','agenda-tag-presu':'#7a1f33'};
 function nhShortDate(iso){const d=niDate(iso);return `${NI_DIAS[d.getDay()]} ${d.getDate()}`}
 function nhSec(title,action,body,id=''){return `<section class="nh-sec"${id?` id="${id}"`:''}><div class="nh-head"><h2>${title}</h2>${action||''}</div>${body}</section>`}
 function nhMore(attr,label='Ver todo'){return `<button type="button" class="nh-more" ${attr}>${label} ›</button>`}
@@ -2060,7 +2090,9 @@ function niHome(){
   `<button type="button" class="nh-tile" data-tab="Radar"><b>${radarInWindow(1,true).length}</b><small>Radar hoy</small></button>`,
   `<button type="button" class="nh-tile" data-tab="Iniciativas"><b>${ico('document',20)}</b><small>Iniciativas</small></button>`
  ].filter(Boolean).slice(0,4).join('');
- const top=`<section class="nh-top"><div class="wrap"><p class="nh-hello">Hola, ${esc(first)}</p><h1 class="nh-date">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</h1>${plenoLine}<div class="nh-tiles">${tiles}</div></div></section>`;
+ const pp=presuProximo();
+ const presuLine=`<button type="button" class="nh-presu press" data-tab="Presupuestos"><b>📊 Presupuestos 2027</b><span>${pp?esc(niRelDay(pp.fecha)+': '+pp.titulo):'Ver'} ›</span></button>`;
+ const top=`<section class="nh-top"><div class="wrap"><p class="nh-hello">Hola, ${esc(first)}</p><h1 class="nh-date">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</h1>${plenoLine}${presuLine}<div class="nh-tiles">${tiles}</div></div></section>`;
 
  // Agenda: Hoy · Mañana · Semana, en filas.
  const sets={hoy:today,manana:up.filter(x=>x.event_date===manana),semana:up.filter(x=>x.event_date>hoy&&x.event_date<=plusDaysISO(hoy,7))};
@@ -2108,7 +2140,7 @@ function niImportantesHome(){
 
 // ---- Agenda ----
 // Tipos de cita: se pueden marcar varios a la vez; por defecto todos menos «Otros».
-const NI_AG_CATS=['Plenos y Comisiones','Grupo','Mesa y Junta','Otros'];
+const NI_AG_CATS=['Plenos y Comisiones','Grupo','Mesa y Junta','Presupuestos','Otros'];
 function niAgendaItems(){
  if(agScope===null)agScope='mias';
  let items=visibleAgendaItems().filter(x=>(x.type||'').toLowerCase()!=='vencimiento');
@@ -2218,6 +2250,27 @@ function niMas(){
   `<a class="ni-hubitem press" href="https://hodei.legebiltzarra.eus/index.php/s/hFnkUZhwILvJVA9" target="_blank" rel="noopener"><span class="tile">${ico('image',22)}</span><span class="txt"><b>Banco de imágenes</b><small>Archivo compartido de imágenes del grupo</small></span>${ico('chevronRight',20,'chev')}</a>`
  ].filter(Boolean).join('');
  return niPageHeader('Más',esc(ident.name||'Mi cuenta'),esc(ident.role||''))+`<div class="wrap" style="padding-top:18px"><div class="ni-hub">${items}</div><div class="ni-hub" style="margin-top:18px"><a class="ni-hubitem press" href="anterior/"><span class="tile">${ico('arrowRight',22)}</span><span class="txt"><b>Versión anterior</b><small>El diseño de antes, por si lo necesitas</small></span></a><button type="button" class="ni-hubitem press danger" id="logout"><span class="tile">${ico('logout',22)}</span><span class="txt"><b>Salir</b><small>Cambiar de usuario</small></span></button></div></div><div style="height:16px"></div>`;
+}
+
+// ---- Presupuestos 2027 ----
+function presuProximo(){const hoy=todayISO();return (presuItems||[]).filter(x=>presuEsEvento(x)&&x.fecha>=hoy).sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora))[0]||null}
+function presuFila(x){
+ const hoy=todayISO(),pasado=x.fecha<hoy,mio=!presuParaTodos(x)&&presuParaMi(x);
+ const enlace=/^https?:\/\//i.test(x.enlace)?`<a class="nh-ico" href="${esc(x.enlace)}" target="_blank" rel="noopener" aria-label="Abrir">${ico('document',18)}</a>`:'';
+ const sub=[x.tipo,x.hora,x.lugar,x.depto,presuParaTodos(x)?'Todo el grupo':x.para].filter(Boolean).map(esc).join(' · ');
+ return `<div class="nh-row ${pasado?'past':''}"><span class="nh-bar" style="background:#7a1f33"></span><span class="nh-time">${esc(nhShortDate(x.fecha))}<br>${esc(NI_MESES[niDate(x.fecha).getMonth()])}</span><span class="presu-txt"><b>${mio?'● ':''}${esc(x.titulo)}</b><small>${sub}</small></span>${enlace}</div>`;
+}
+function niPresupuestos(){
+ const items=presuItems||[],hoy=todayISO();
+ const eventos=items.filter(presuEsEvento).sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora));
+ const proximos=eventos.filter(x=>x.fecha>=hoy),pasados=eventos.filter(x=>x.fecha<hoy).reverse();
+ const docs=items.filter(x=>!presuEsEvento(x));
+ const p=presuProximo();
+ const hito=p?`<div class="presu-hito"><small>Próximo · ${esc(niRelDay(p.fecha))}${p.hora?' · '+esc(p.hora):''}</small><b>${esc(p.titulo)}</b>${p.lugar?`<span>${esc(p.lugar)}</span>`:''}</div>`:'';
+ const vacio=!items.length?niEmpty('Todavía no hay nada','Se rellena en la pestaña «Presupuestos 2027» del Excel: cada fila es un evento o un documento.'):'';
+ const cal=proximos.length||pasados.length?nhSec('Calendario de la tramitación','',`<div class="nh-list">${[...proximos,...pasados].map(presuFila).join('')}</div>`):'';
+ const docsSec=docs.length?nhSec('Documentos','',`<div class="nh-list">${docs.map(d=>`<${/^https?:/i.test(d.enlace)?`a href="${esc(d.enlace)}" target="_blank" rel="noopener"`:'div'} class="nh-row"><span class="nh-bar" style="background:#7a1f33"></span><span class="nh-title nh-doc">${esc(d.titulo)}${d.notas?`<br><small>${esc(d.notas)}</small>`:''}</span>${d.depto?`<span class="nh-state">${esc(d.depto)}</span>`:''}</${/^https?:/i.test(d.enlace)?'a':'div'}>`).join('')}</div>`):'';
+ return `<section class="ni-head presu-head"><div class="wrap"><button type="button" class="ni-back press" data-tab="Inicio">${ico('chevronLeft',16)}Inicio</button><p class="eyebrow">Tramitación</p><h1 class="display">Presupuestos 2027</h1>${hito}</div></section><div class="wrap">${vacio}<div class="nh-cols"><div>${cal}</div><div>${docsSec}</div></div><p class="ni-count" style="margin-top:14px">Los eventos marcados con ● son tuyos; también aparecen en tu agenda.</p></div><div style="height:16px"></div>`;
 }
 
 // ---- Asignadas ----
