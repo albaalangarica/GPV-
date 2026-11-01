@@ -142,6 +142,20 @@ button{font-family:inherit}
 .nh-presu b{white-space:nowrap;flex:0 0 auto}
 .nh-presu span{flex:1;min-width:0;text-align:right;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .presu-head{background:#5c1626}
+.pz-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.pz-links .presu-cal{margin-top:0;flex:1 1 200px}
+.pz-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+.pz-day{background:#fff;border:1px solid var(--line,#e3e7ef);border-radius:14px;overflow:hidden}
+.pz-day.past{opacity:.55}.pz-day.today{border-color:#7a1f33;box-shadow:0 0 0 1px #7a1f33}
+.pz-dh{padding:8px 12px;background:#7a1f33;color:#fff;font-size:13px;font-weight:700;text-transform:capitalize}
+.pz-row{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:baseline;padding:7px 12px;border-top:1px solid #f0f2f6;color:inherit;text-decoration:none;font-size:14px}
+.pz-row:first-of-type{border-top:0}.pz-row.mine{background:#fbf1f3}
+.pz-h{font-variant-numeric:tabular-nums;color:#7a1f33;font-weight:700;font-size:13px}
+.pz-t{font-weight:600;min-width:0}.pz-who{font-size:12px;color:#6b7280;white-space:nowrap}.pz-row.mine .pz-who{color:#7a1f33;font-weight:700}
+.pz-folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.pz-folder{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:12px;background:#fff;border:1px solid var(--line,#e3e7ef);color:#7a1f33;text-decoration:none}
+.pz-folder span{display:flex;flex-direction:column;min-width:0}.pz-folder small{font-size:11px;color:#9ca3af;font-weight:700}
+.pz-folder b{font-size:13.5px;color:#111827;line-height:1.25}.pz-folder em{font-style:normal;font-size:12px;color:#6b7280;margin-top:2px}
+.pz-folder.mine{background:#fbf1f3;border-color:#e7c3cc}.pz-folder.mine em{color:#7a1f33;font-weight:700}
 .presu-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .presu-txt b{font-size:14px;line-height:1.3;color:var(--night)}
 .presu-txt small{font-size:12px;color:var(--slate);line-height:1.35}
@@ -162,7 +176,7 @@ button{font-family:inherit}
 .nh-sec{padding-top:16px}
 .nh-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .nh-head h2{margin:0;margin-right:auto;font-size:16px;font-weight:700;color:var(--night)}
-.nh-more{border:0;background:none;color:var(--electric);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;white-space:nowrap}
+.nh-more{text-decoration:none;border:0;background:none;color:var(--electric);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;white-space:nowrap}
 .nh-add{width:30px;height:30px;border-radius:999px;border:0;background:var(--electric);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .nh-tabs{display:inline-flex;background:#fff;border:1px solid var(--line-strong);border-radius:999px;padding:3px}
 .nh-tabs button{border:0;background:none;border-radius:999px;padding:5px 10px;font:inherit;font-size:12px;font-weight:700;color:var(--slate);cursor:pointer;white-space:nowrap}
@@ -2092,7 +2106,8 @@ function niHome(){
   `<button type="button" class="nh-tile" data-tab="Radar"><b>${radarInWindow(1,true).length}</b><small>Radar hoy</small></button>`,
   `<button type="button" class="nh-tile" data-tab="Iniciativas"><b>${ico('document',20)}</b><small>Iniciativas</small></button>`
  ].filter(Boolean).slice(0,4).join('');
- const presuLine=`<a class="nh-presu press" href="${PRESU_CALENDARIO_URL}" target="_blank" rel="noopener"><b>📊 Presupuestos 2027</b><span>Calendario ›</span></a>`;
+ const pp=presuProximo();
+ const presuLine=`<button type="button" class="nh-presu press" data-tab="Presupuestos"><b>📊 Presupuestos 2027</b><span>${pp?esc(niRelDay(pp.fecha)+': '+niPresuCorto(pp)):'Ver'} ›</span></button>`;
  const top=`<section class="nh-top"><div class="wrap"><p class="nh-hello">Hola, ${esc(first)}</p><h1 class="nh-date">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</h1>${plenoLine}${presuLine}<div class="nh-tiles">${tiles}</div></div></section>`;
 
  // Agenda: Hoy · Mañana · Semana, en filas.
@@ -2255,25 +2270,57 @@ function niMas(){
 
 // ---- Presupuestos 2027 ----
 const PRESU_CALENDARIO_URL='https://drive.google.com/file/d/1UpvWCjrbW45KADRzshSVY_9mr0TrG60S/view?usp=drive_link';
-function presuProximo(){const hoy=todayISO();return (presuItems||[]).filter(x=>presuEsEvento(x)&&x.fecha>=hoy).sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora))[0]||null}
+// Fecha + hora con dos cifras («9:00» → «09:00») para que se ordene bien.
+function presuClave(x){return x.fecha+String(x.hora||'').padStart(5,'0')}
+function presuProximo(){const hoy=todayISO();return (presuItems||[]).filter(x=>presuEsEvento(x)&&x.fecha>=hoy).sort((a,b)=>presuClave(a).localeCompare(presuClave(b)))[0]||null}
 function presuFila(x){
  const hoy=todayISO(),pasado=x.fecha<hoy,mio=!presuParaTodos(x)&&presuParaMi(x);
  const enlace=/^https?:\/\//i.test(x.enlace)?`<a class="nh-ico" href="${esc(x.enlace)}" target="_blank" rel="noopener" aria-label="Abrir">${ico('document',18)}</a>`:'';
  const sub=[x.tipo,x.hora,x.lugar,x.depto,presuParaTodos(x)?'Todo el grupo':x.para].filter(Boolean).map(esc).join(' · ');
  return `<div class="nh-row ${pasado?'past':''}"><span class="nh-bar" style="background:#7a1f33"></span><span class="nh-time">${esc(nhShortDate(x.fecha))}<br>${esc(NI_MESES[niDate(x.fecha).getMonth()])}</span><span class="presu-txt"><b>${mio?'● ':''}${esc(x.titulo)}</b><small>${sub}</small></span>${enlace}</div>`;
 }
+// Carpetas del Drive: PARLAMENTO VASCO › Drive compartido - GPV › GENERAL › Presupuestos 2027.
+// [número, nombre corto, carpeta, palabra que la une con la comparecencia del Excel]
+const PRESU_CARPETA='179_jQNI1I0S4orFy4Miog6JPe0wJ9HKc';
+const PRESU_DEPTOS=[
+ ['01','Presidencia','1P8JY5VJEbFcaYu0ynv4pNXeMAchEB6GW','presidencia'],
+ ['02','Cultura y Política Lingüística','1YSgPnBqGHOM-vkK2QlpxZ9XlNHYE-52k','cultura'],
+ ['03','Economía, Trabajo y Empleo','1V_5QL3oNeMeOB0XIMNoiQKnK9Pfm1esd','economia'],
+ ['04','Hacienda y Finanzas','1axn4l7GFn_VG9BkZMT23NZiuT_GXY1Nt','hacienda'],
+ ['05','Gobernanza y Autogobierno','1ihoULTAGz6QD3nEfQThngUQWT8SqcFJ1','gobernanza'],
+ ['06','Industria y Transición Energética','1LTnuKj__TSg57pQGfE5YcCbw5PeQskdH','industria'],
+ ['07','Seguridad','1TvBu607VaQAJko6UIrOMHN8x8FNpRL37','seguridad'],
+ ['08','Educación','1wDPwXLfdX3Oezc_30B3kEmUt5-Bsk7qR','educacion'],
+ ['09','Vivienda y Agenda Urbana','1Kd8xfx7eAo94I2mKhuslbrbM9EgG5eOH','vivienda'],
+ ['10','Salud','18YB6SmOeJ_UNfzhaxzAV_GaHXX55mzFk','salud'],
+ ['11','Bienestar, Juventud y Reto Demográfico','1xwQ3Ybhh7ANw77XHiKFRmw6JzJCg6bYK','bienestar'],
+ ['12','Movilidad Sostenible','17ZFE4gI9aFOmvjuh1hf5EjWhfzQvsq0D','movilidad'],
+ ['13','Ciencia y Universidades','1EnfR6TUnfs22tYrF-a0NEtxbFHRm9Rtx','ciencia'],
+ ['14','Turismo, Comercio y Consumo','11n2GRX5Qin_yleUSqxgfhCH0cb3OVntH','turismo'],
+ ['15','Alimentación y Desarrollo Rural','1lIgxZi3uXInhuXq9Pm4O3wGjspjZg65C','alimentacion'],
+ ['16','Justicia y Derechos Humanos','102B9paBIu06wYMOE3QnnReYbbTHYc4q2','justicia']
+];
+const presuDriveUrl=id=>`https://drive.google.com/drive/folders/${id}`;
+function presuDeptoDe(x){const t=normPerson((x.titulo||'')+' '+(x.depto||''));return PRESU_DEPTOS.find(d=>new RegExp('\\b'+d[3]).test(t))||null}
+function niPresuCorto(x){const d=normPerson(x.tipo)==='comparecencia'?presuDeptoDe(x):null;return d?d[1]:String(x.titulo||'').replace(/^Comparecencia:\s*/i,'')}
+function presuNombres(x){return presuParaTodos(x)?'Todos':String(x.para||'').split(/\s*(?:,|;|\/|\+|\by\b)\s*/i).filter(Boolean).map(n=>n.trim().split(/\s+/)[0]).join(' y ')}
 function niPresupuestos(){
  const items=presuItems||[],hoy=todayISO();
- const eventos=items.filter(presuEsEvento).sort((a,b)=>(a.fecha+a.hora).localeCompare(b.fecha+b.hora));
- const proximos=eventos.filter(x=>x.fecha>=hoy),pasados=eventos.filter(x=>x.fecha<hoy).reverse();
+ const eventos=items.filter(presuEsEvento).sort((a,b)=>presuClave(a).localeCompare(presuClave(b)));
  const docs=items.filter(x=>!presuEsEvento(x));
- const p=presuProximo();
- // Enlace fijo al calendario oficial de comparecencias (PDF en el Drive).
- const hito=`<a class="presu-cal press" href="${PRESU_CALENDARIO_URL}" target="_blank" rel="noopener">${ico('calendar',18)}Calendario de comparecencias<span>›</span></a>`;
+ const enlaces=`<div class="pz-links"><a class="presu-cal press" href="${PRESU_CALENDARIO_URL}" target="_blank" rel="noopener">${ico('calendar',18)}Calendario (PDF)<span>›</span></a><a class="presu-cal press" href="${presuDriveUrl(PRESU_CARPETA)}" target="_blank" rel="noopener">${ico('folder',18)}Carpeta general<span>›</span></a></div>`;
  const vacio=!items.length?niEmpty('Todavía no hay nada','Se rellena en la pestaña «Presupuestos 2027» del Excel: cada fila es un evento o un documento.'):'';
- const cal=proximos.length||pasados.length?nhSec('Calendario de la tramitación','',`<div class="nh-list">${[...proximos,...pasados].map(presuFila).join('')}</div>`):'';
+ // Calendario resumido: un bloque por día; cada comparecencia lleva a la carpeta de su departamento.
+ const dias=[];eventos.filter(x=>x.fecha>=hoy).forEach(x=>{let d=dias.find(g=>g.fecha===x.fecha);if(!d)dias.push(d={fecha:x.fecha,items:[]});d.items.push(x)});
+ const fila=x=>{const dep=presuDeptoDe(x),mio=!presuParaTodos(x)&&presuParaMi(x),tag=dep?'a':'div',href=dep?` href="${presuDriveUrl(dep[2])}" target="_blank" rel="noopener"`:'';
+  return `<${tag} class="pz-row${mio?' mine':''}"${href}><span class="pz-h">${esc(x.hora||'—')}</span><span class="pz-t">${esc(niPresuCorto(x))}</span><span class="pz-who">${mio?'● ':''}${esc(presuNombres(x))}</span></${tag}>`};
+ const diaTxt=iso=>{const d=niDate(iso);return `${NI_DIAS[d.getDay()]} ${d.getDate()} ${NI_MESES[d.getMonth()]}`};
+ const cal=dias.length?nhSec('Calendario','',`<div class="pz-days">${dias.map(g=>`<div class="pz-day${g.fecha<hoy?' past':''}${g.fecha===hoy?' today':''}"><div class="pz-dh">${esc(diaTxt(g.fecha))}${g.fecha===hoy?' · hoy':''}</div>${g.items.map(fila).join('')}</div>`).join('')}</div>`):'';
+ // Carpetas por departamento, con quién lo lleva (según la comparecencia del Excel).
+ const resp=d=>eventos.find(x=>normPerson(x.tipo)==='comparecencia'&&presuDeptoDe(x)===d);
+ const carpetas=nhSec('Carpetas por departamento',`<a class="nh-more" href="${presuDriveUrl(PRESU_CARPETA)}" target="_blank" rel="noopener">Todas ›</a>`,`<div class="pz-folders">${PRESU_DEPTOS.map(d=>{const r=resp(d),mio=r&&!presuParaTodos(r)&&presuParaMi(r);return `<a class="pz-folder press${mio?' mine':''}" href="${presuDriveUrl(d[2])}" target="_blank" rel="noopener">${ico('folder',20)}<span><small>${d[0]}</small><b>${esc(d[1])}</b>${r?`<em>${mio?'● ':''}${esc(presuNombres(r))}</em>`:''}</span></a>`}).join('')}</div>`);
  const docsSec=docs.length?nhSec('Documentos','',`<div class="nh-list">${docs.map(d=>`<${/^https?:/i.test(d.enlace)?`a href="${esc(d.enlace)}" target="_blank" rel="noopener"`:'div'} class="nh-row"><span class="nh-bar" style="background:#7a1f33"></span><span class="nh-title nh-doc">${esc(d.titulo)}${d.notas?`<br><small>${esc(d.notas)}</small>`:''}</span>${d.depto?`<span class="nh-state">${esc(d.depto)}</span>`:''}</${/^https?:/i.test(d.enlace)?'a':'div'}>`).join('')}</div>`):'';
- return `<section class="ni-head presu-head"><div class="wrap"><button type="button" class="ni-back press" data-tab="Inicio">${ico('chevronLeft',16)}Inicio</button><p class="eyebrow">Tramitación</p><h1 class="display">Presupuestos 2027</h1>${hito}</div></section><div class="wrap">${vacio}<div class="nh-cols"><div>${cal}</div><div>${docsSec}</div></div><p class="ni-count" style="margin-top:14px">Los eventos marcados con ● son tuyos; también aparecen en tu agenda.</p></div><div style="height:16px"></div>`;
+ return `<section class="ni-head presu-head"><div class="wrap"><button type="button" class="ni-back press" data-tab="Inicio">${ico('chevronLeft',16)}Inicio</button><h1 class="display">Presupuestos 2027</h1>${enlaces}</div></section><div class="wrap">${vacio}${cal}${carpetas}${docsSec}<p class="ni-count" style="margin-top:14px">● = te toca a ti (también aparece en tu agenda).</p></div><div style="height:16px"></div>`;
 }
 
 // ---- Asignadas ----
