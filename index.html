@@ -2117,7 +2117,7 @@ function niHome(){
  const agendaBody=list.length?`<div class="nh-list">${list.slice(0,12).map(x=>nhAgendaRow(x,nhDia==='semana')).join('')}</div>`:`<div class="nh-list"><div class="nh-row empty">${nhDia==='hoy'?'Nada en la agenda de hoy.':nhDia==='manana'?'Nada mañana.':'Semana sin citas.'}</div></div>`;
  const agendaSec=nhSec('Agenda',`${tabs}${nhMore('data-tab="Agenda"','Todo')}`,agendaBody);
 
- const dlSec=deadlines.length?nhSec('Plazos','',`<div class="nh-list">${deadlines.slice(0,6).map(x=>{const who=String(x.detail||'').split(':')[0],t=String(x.detail||'').replace(/^[^:]+:\s*/,'');return `<div class="nh-row"><span class="nh-bar" style="background:var(--danger)"></span><span class="nh-time warn">${esc(nhShortDate(x.event_date))}</span><span class="nh-title">${esc(t)}${niSeesAll()&&who?` <small>· ${esc(who)}</small>`:''}</span></div>`}).join('')}</div>`,'nh-plazos'):'';
+ const dlSec=deadlines.length?nhSec('Plazos','',`<div class="nh-list">${deadlines.slice(0,6).map(x=>{const d=String(x.detail||'').trim(),con=/^[^:]{1,40}:\s/.test(d),who=con?d.split(':')[0]:'',t=(con?d.replace(/^[^:]+:\s*/,''):d)||String(x.organ_activity||'').trim()||'Plazo';return `<div class="nh-row"><span class="nh-bar" style="background:var(--danger)"></span><span class="nh-time warn">${esc(nhShortDate(x.event_date))}</span><span class="nh-title">${esc(t)}${niSeesAll()&&who?` <small>· ${esc(who)}</small>`:''}</span></div>`}).join('')}</div>`,'nh-plazos'):'';
 
  let impSec='';
  if(!isPrensa()&&!isEquipo()){
