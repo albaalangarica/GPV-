@@ -2269,7 +2269,6 @@ function niMas(){
 }
 
 // ---- Presupuestos 2027 ----
-const PRESU_CALENDARIO_URL='https://drive.google.com/file/d/1UpvWCjrbW45KADRzshSVY_9mr0TrG60S/view?usp=drive_link';
 // Fecha + hora con dos cifras («9:00» → «09:00») para que se ordene bien.
 function presuClave(x){return x.fecha+String(x.hora||'').padStart(5,'0')}
 function presuProximo(){const hoy=todayISO();return (presuItems||[]).filter(x=>presuEsEvento(x)&&x.fecha>=hoy).sort((a,b)=>presuClave(a).localeCompare(presuClave(b)))[0]||null}
@@ -2308,7 +2307,7 @@ function niPresupuestos(){
  const items=presuItems||[],hoy=todayISO();
  const eventos=items.filter(presuEsEvento).sort((a,b)=>presuClave(a).localeCompare(presuClave(b)));
  const docs=items.filter(x=>!presuEsEvento(x));
- const enlaces=`<div class="pz-links"><a class="presu-cal press" href="${PRESU_CALENDARIO_URL}" target="_blank" rel="noopener">${ico('calendar',18)}Calendario (PDF)<span>›</span></a><a class="presu-cal press" href="${presuDriveUrl(PRESU_CARPETA)}" target="_blank" rel="noopener">${ico('folder',18)}Carpeta general<span>›</span></a></div>`;
+ const enlaces=`<div class="pz-links"><a class="presu-cal press" href="${presuDriveUrl(PRESU_CARPETA)}" target="_blank" rel="noopener">${ico('folder',18)}Carpeta general<span>›</span></a></div>`;
  const vacio=!items.length?niEmpty('Todavía no hay nada','Se rellena en la pestaña «Presupuestos 2027» del Excel: cada fila es un evento o un documento.'):'';
  // Calendario resumido: un bloque por día; cada comparecencia lleva a la carpeta de su departamento.
  const dias=[];eventos.filter(x=>x.fecha>=hoy).forEach(x=>{let d=dias.find(g=>g.fecha===x.fecha);if(!d)dias.push(d={fecha:x.fecha,items:[]});d.items.push(x)});
