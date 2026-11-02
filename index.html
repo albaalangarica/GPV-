@@ -176,6 +176,11 @@ button{font-family:inherit}
 .nh-sec{padding-top:16px}
 .nh-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .nh-head h2{margin:0;margin-right:auto;font-size:16px;font-weight:700;color:var(--night)}
+.nh-sub-first{border-top:0}
+.nh-prox>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.nh-prox>summary::-webkit-details-marker{display:none}
+.nh-prox>summary::after{content:'▾';font-size:13px;transition:transform .15s}
+.nh-prox[open]>summary::after{transform:rotate(180deg)}
 .nh-sub{padding:8px 14px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;background:#f6f7fa;border-top:1px solid #eef0f4}
 .nh-more{text-decoration:none;border:0;background:none;color:var(--electric);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;white-space:nowrap}
 .nh-add{width:30px;height:30px;border-radius:999px;border:0;background:var(--electric);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
@@ -2088,6 +2093,7 @@ function nhDocsAviso(){
  const docs=nhDocsNuevos();if(!docs.length)return '';
  return `<section class="nh-sec"><div class="nh-head"><h2>📄 Nuevo en el repositorio</h2></div><div class="nh-list">${docs.map(d=>`<div class="nh-row"><span class="nh-bar" style="background:var(--electric)"></span><a class="nh-title nh-doc" href="${esc(d.enlace)}" target="_blank" rel="noopener" data-doc-visto="${esc(d.enlace)}">${esc(d.titulo)}</a><button type="button" class="nh-x" data-doc-cerrar="${esc(d.enlace)}" aria-label="Quitar aviso">✕</button></div>`).join('')}</div></section>`;
 }
+let nhProxOpen=false;
 function niHome(){
  const ident=displayIdentity(),first=String(ident.name||'').split(' ')[0];
  const hoy=todayISO(),manana=plusDaysISO(hoy,1),up=niOwnUpcoming();
@@ -2113,8 +2119,9 @@ function niHome(){
 
  // Agenda: todo lo de hoy y, debajo, hasta 5 citas de lo siguiente.
  const siguientes=up.filter(x=>x.event_date>hoy).slice(0,5);
- const hoyBody=today.length?today.map(x=>nhAgendaRow(x,false)).join(''):'<div class="nh-row empty">Nada en la agenda de hoy.</div>';
- const sigBody=siguientes.length?`<div class="nh-sub">Próximamente</div>${siguientes.map(x=>nhAgendaRow(x,true)).join('')}`:'';
+ const hoyBody=`<div class="nh-sub nh-sub-first">Hoy</div>${today.length?today.map(x=>nhAgendaRow(x,false)).join(''):'<div class="nh-row empty">Nada en la agenda de hoy.</div>'}`;
+ // «Próximamente» empieza plegado; se abre al tocarlo (y sigue abierto mientras no se cierre la app).
+ const sigBody=siguientes.length?`<details class="nh-prox"${nhProxOpen?' open':''}><summary class="nh-sub">Próximamente · ${siguientes.length}</summary>${siguientes.map(x=>nhAgendaRow(x,true)).join('')}</details>`:'';
  const agendaSec=nhSec('Agenda',nhMore('data-tab="Agenda"','Todo'),`<div class="nh-list">${hoyBody}${sigBody}</div>`);
 
  const dlSec=deadlines.length?nhSec('Plazos','',`<div class="nh-list">${deadlines.slice(0,6).map(x=>{const d=String(x.detail||'').trim(),con=/^[^:]{1,40}:\s/.test(d),who=con?d.split(':')[0]:'',t=(con?d.replace(/^[^:]+:\s*/,''):d)||String(x.organ_activity||'').trim()||'Plazo';return `<div class="nh-row"><span class="nh-bar" style="background:var(--danger)"></span><span class="nh-time warn">${esc(nhShortDate(x.event_date))}</span><span class="nh-title">${esc(t)}${niSeesAll()&&who?` <small>· ${esc(who)}</small>`:''}</span></div>`}).join('')}</div>`,'nh-plazos'):'';
@@ -2465,6 +2472,7 @@ function niBind(){
  on('[data-doc-quitar]',b=>quitarDoc(b.dataset.docQuitar));
  document.querySelectorAll('[data-docs-desplegable]').forEach(d=>d.addEventListener('toggle',()=>{docsAbiertos=d.open}));
  on('[data-in-otros]',()=>{inOtros=!inOtros;render()});
+ document.querySelectorAll('.nh-prox').forEach(d=>d.ontoggle=()=>{nhProxOpen=d.open});
  on('[data-in-vista]',b=>{inVista=b.dataset.inVista;inMes=todayISO().slice(0,7);inDia=todayISO();render()});
  on('[data-in-dia]',b=>{inDia=inDia===b.dataset.inDia?'':b.dataset.inDia;render()});
  on('[data-in-mes]',b=>{const [y,m]=inMes.split('-').map(Number);const d=new Date(y,m-1+Number(b.dataset.inMes),1);inMes=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;inDia='';render()});

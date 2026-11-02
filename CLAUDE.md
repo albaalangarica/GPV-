@@ -31,7 +31,7 @@ Hablar con Alba en español, sin tecnicismos.
 - Eventos del buzón: solo entran en agenda si se añaden a mano y solo los ve su dueño.
 - Agenda: cada uno ve lo común (Plenos y Comisiones, Grupo, Mesa y Junta) y lo suyo;
   lo personal de otros no aparece. Descartados ocultos. «Otros» NUNCA en Inicio; sí en la
-  Agenda completa («Todo»), marcado de entrada. Inicio: todo lo de hoy + hasta 5 citas siguientes.
+  Agenda completa («Todo»), marcado de entrada. Inicio: «Hoy» con todo lo de hoy + «Próximamente» (hasta 5, plegado de entrada).
   La etiqueta del Excel manda sobre la categoría deducida.
 - Plenos destacados, con enlace al orden del día siempre visible (cabecera e Inicio).
 - Tarjetas de agenda compactas: sin subtítulo, solo título + tipo/hora/lugar.
