@@ -176,6 +176,7 @@ button{font-family:inherit}
 .nh-sec{padding-top:16px}
 .nh-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .nh-head h2{margin:0;margin-right:auto;font-size:16px;font-weight:700;color:var(--night)}
+.nh-sub{padding:8px 14px 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;background:#f6f7fa;border-top:1px solid #eef0f4}
 .nh-more{text-decoration:none;border:0;background:none;color:var(--electric);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;white-space:nowrap}
 .nh-add{width:30px;height:30px;border-radius:999px;border:0;background:var(--electric);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .nh-tabs{display:inline-flex;background:#fff;border:1px solid var(--line-strong);border-radius:999px;padding:3px}
@@ -1951,7 +1952,7 @@ const NI_DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 const NI_DIAS_LARGOS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const NI_MAS_TABS=new Set(['Mas','Buzón','Tareas','Grupo','Pendientes','Banco de Datos','Orden','Adjudicaciones']);
 let inVista='lista',inMes=null,inDia=null,inOtros=false;
-let agCats=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta','Presupuestos']),agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
+let agCats=new Set(['Plenos y Comisiones','Grupo','Mesa y Junta','Presupuestos','Otros']),agScope=null,agVista='lista',agMes=null,agDia=null,agDias=30;
 let niTipo='Todos',niEstado='Todas',niPersona='Todos',niOrden='recientes',niLastTab='';
 
 function niSeesAll(){return isAdmin()||isPrensa()||isEquipo()}
@@ -2052,7 +2053,8 @@ function niEsMio(x){if(x.presu)return presuParaMi(x);return NI_COMUNES.has(categ
 function niMiAgenda(){return visibleAgendaItems().filter(x=>niEsMio(x)&&(x.type||'').toLowerCase()!=='vencimiento').sort(niByDate)}
 function niOwnUpcoming(){
  const hoy=todayISO();
- return niMiAgenda().filter(x=>x.event_date>=hoy&&(inOtros||category(x)!=='Otros'));
+ // En Inicio nunca sale «Otros»: esos actos solo se ven al entrar en la Agenda completa.
+ return niMiAgenda().filter(x=>x.event_date>=hoy&&category(x)!=='Otros');
 }
 function niOtrosToggle(n){return n?`<button type="button" class="ni-chip press ${inOtros?'active':''}" data-in-otros aria-pressed="${inOtros}">${inOtros?ico('check',14)+' ':''}Otros · ${n}</button>`:''}
 function niDeadlines(days=7){
@@ -2067,7 +2069,6 @@ function niInboxCount(){
 }
 // Inicio compacto: una franja con la fecha y el pleno, cuatro casillas con números
 // y bloques en filas de una línea. Lo detallado está en cada página.
-let nhDia='hoy';
 const NH_TAG_COLOR={'agenda-tag-pleno':'var(--danger)','agenda-tag-comision':'var(--warning)','agenda-tag-grupo':'var(--electric)','agenda-tag-mesa':'var(--success)','agenda-tag-presu':'#7a1f33'};
 function nhShortDate(iso){const d=niDate(iso);return `${NI_DIAS[d.getDay()]} ${d.getDate()}`}
 function nhSec(title,action,body,id=''){return `<section class="nh-sec"${id?` id="${id}"`:''}><div class="nh-head"><h2>${title}</h2>${action||''}</div>${body}</section>`}
@@ -2110,12 +2111,11 @@ function niHome(){
  const presuLine=`<button type="button" class="nh-presu press" data-tab="Presupuestos"><b>📊 Presupuestos 2027</b><span>${pp?esc(niRelDay(pp.fecha)+': '+niPresuCorto(pp)):'Ver'} ›</span></button>`;
  const top=`<section class="nh-top"><div class="wrap"><p class="nh-hello">Hola, ${esc(first)}</p><h1 class="nh-date">${esc(niLongDate(hoy).replace(/^./,c=>c.toUpperCase()))}</h1>${plenoLine}${presuLine}<div class="nh-tiles">${tiles}</div></div></section>`;
 
- // Agenda: Hoy · Mañana · Semana, en filas.
- const sets={hoy:today,manana:up.filter(x=>x.event_date===manana),semana:up.filter(x=>x.event_date>hoy&&x.event_date<=plusDaysISO(hoy,7))};
- const list=sets[nhDia]||today;
- const tabs=`<div class="nh-tabs" role="tablist">${[['hoy','Hoy'],['manana','Mañana'],['semana','Semana']].map(([k,l])=>`<button type="button" data-nh-dia="${k}" class="${nhDia===k?'active':''}">${l}${sets[k].length?` <i>${sets[k].length}</i>`:''}</button>`).join('')}</div>`;
- const agendaBody=list.length?`<div class="nh-list">${list.slice(0,12).map(x=>nhAgendaRow(x,nhDia==='semana')).join('')}</div>`:`<div class="nh-list"><div class="nh-row empty">${nhDia==='hoy'?'Nada en la agenda de hoy.':nhDia==='manana'?'Nada mañana.':'Semana sin citas.'}</div></div>`;
- const agendaSec=nhSec('Agenda',`${tabs}${nhMore('data-tab="Agenda"','Todo')}`,agendaBody);
+ // Agenda: todo lo de hoy y, debajo, hasta 5 citas de lo siguiente.
+ const siguientes=up.filter(x=>x.event_date>hoy).slice(0,5);
+ const hoyBody=today.length?today.map(x=>nhAgendaRow(x,false)).join(''):'<div class="nh-row empty">Nada en la agenda de hoy.</div>';
+ const sigBody=siguientes.length?`<div class="nh-sub">Próximamente</div>${siguientes.map(x=>nhAgendaRow(x,true)).join('')}`:'';
+ const agendaSec=nhSec('Agenda',nhMore('data-tab="Agenda"','Todo'),`<div class="nh-list">${hoyBody}${sigBody}</div>`);
 
  const dlSec=deadlines.length?nhSec('Plazos','',`<div class="nh-list">${deadlines.slice(0,6).map(x=>{const d=String(x.detail||'').trim(),con=/^[^:]{1,40}:\s/.test(d),who=con?d.split(':')[0]:'',t=(con?d.replace(/^[^:]+:\s*/,''):d)||String(x.organ_activity||'').trim()||'Plazo';return `<div class="nh-row"><span class="nh-bar" style="background:var(--danger)"></span><span class="nh-time warn">${esc(nhShortDate(x.event_date))}</span><span class="nh-title">${esc(t)}${niSeesAll()&&who?` <small>· ${esc(who)}</small>`:''}</span></div>`}).join('')}</div>`,'nh-plazos'):'';
 
@@ -2155,7 +2155,7 @@ function niImportantesHome(){
 }
 
 // ---- Agenda ----
-// Tipos de cita: se pueden marcar varios a la vez; por defecto todos menos «Otros».
+// Tipos de cita: se pueden marcar varios a la vez; por defecto todos (también «Otros»).
 const NI_AG_CATS=['Plenos y Comisiones','Grupo','Mesa y Junta','Presupuestos','Otros'];
 function niAgendaItems(){
  if(agScope===null)agScope='mias';
@@ -2464,7 +2464,6 @@ function niBind(){
   on('[data-doc-cerrar]',b=>{marcar(b.dataset.docCerrar);render()});}
  on('[data-doc-quitar]',b=>quitarDoc(b.dataset.docQuitar));
  document.querySelectorAll('[data-docs-desplegable]').forEach(d=>d.addEventListener('toggle',()=>{docsAbiertos=d.open}));
- on('[data-nh-dia]',b=>{nhDia=b.dataset.nhDia;render()});
  on('[data-in-otros]',()=>{inOtros=!inOtros;render()});
  on('[data-in-vista]',b=>{inVista=b.dataset.inVista;inMes=todayISO().slice(0,7);inDia=todayISO();render()});
  on('[data-in-dia]',b=>{inDia=inDia===b.dataset.inDia?'':b.dataset.inDia;render()});
