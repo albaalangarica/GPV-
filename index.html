@@ -2020,13 +2020,13 @@ function renderView(){
 // ---- Plenos ----
 // Los plenos van destacados y siempre llevan enlace al orden del día. Si el Parlamento
 // aún no lo ha publicado, el enlace lleva a su agenda.
-const NI_PARLAMENTO_AGENDA='https://www.legebiltzarra.eus/portal/es/inicio';
 function niIsPleno(x){const t=normPerson(x.type||''),o=normPerson(x.organ_activity||'');return /(^|\s)pleno/.test(t)||/(^|\s)pleno/.test(o)}
-function niOrderLink(x){return agendaOrderLink(x)||(niIsPleno(x)?NI_PARLAMENTO_AGENDA:'')}
+// Solo el orden del día real; sin enlace, mejor nada que llevar a la portada del Parlamento.
+function niOrderLink(x){return agendaOrderLink(x)}
 function niNextPleno(){const hoy=todayISO();return visibleAgendaItems().filter(x=>x.event_date>=hoy&&niIsPleno(x)).sort(niByDate)[0]||null}
 function niPlenoWhen(x){return niRelDay(x.event_date)+(x.event_time&&/^\d/.test(x.event_time)?' · '+x.event_time:'')}
-function niOrderTop(){const p=niNextPleno();if(!p)return '';return `<a class="ni-ordertop press" href="${esc(niOrderLink(p))}" target="_blank" rel="noopener" title="Orden del día del pleno · ${esc(niPlenoWhen(p))}">${ico('document',15)}<span class="short">Orden del día</span><span class="long">Orden del día · Pleno ${esc(niRelDay(p.event_date).toLowerCase())}</span></a>`}
-function niPlenoBanner(){const p=niNextPleno();if(!p)return '';const real=!!agendaOrderLink(p);return `<div class="ni-pleno"><span class="txt"><small>Próximo pleno · ${esc(niPlenoWhen(p))}</small><b>${esc(agendaTitleParts(p).title)}</b></span><a href="${esc(niOrderLink(p))}" target="_blank" rel="noopener">${ico('document',16)}${real?'Orden del día':'Orden del día (Parlamento)'}</a></div>`}
+function niOrderTop(){const p=niNextPleno();if(!p||!niOrderLink(p))return '';return `<a class="ni-ordertop press" href="${esc(niOrderLink(p))}" target="_blank" rel="noopener" title="Orden del día del pleno · ${esc(niPlenoWhen(p))}">${ico('document',15)}<span class="short">Orden del día</span><span class="long">Orden del día · Pleno ${esc(niRelDay(p.event_date).toLowerCase())}</span></a>`}
+function niPlenoBanner(){const p=niNextPleno();if(!p)return '';const real=!!agendaOrderLink(p);return `<div class="ni-pleno"><span class="txt"><small>Próximo pleno · ${esc(niPlenoWhen(p))}</small><b>${esc(agendaTitleParts(p).title)}</b></span>${real?`<a href="${esc(niOrderLink(p))}" target="_blank" rel="noopener">${ico('document',16)}Orden del día</a>`:'<span class="pend">Orden del día pendiente</span>'}</div>`}
 
 // ---- Tarjetas ----
 function niDateBlock(iso,tone=''){const d=niDate(iso);return `<div class="ni-date ${tone}"><span class="ni-date-m">${NI_MESES[d.getMonth()]}</span><span class="ni-date-d">${d.getDate()}</span><span class="ni-date-w">${NI_DIAS[d.getDay()]}</span></div>`}
@@ -2104,7 +2104,8 @@ function niHome(){
 
  // Franja superior: fecha, saludo y, si hay pleno en los próximos días, acceso directo al orden del día.
  const p=niNextPleno();
- const plenoLine=p&&p.event_date<=plusDaysISO(hoy,7)?`<a class="nh-pleno" href="${esc(niOrderLink(p))}" target="_blank" rel="noopener">★ Pleno ${esc(niRelDay(p.event_date).toLowerCase())}${p.event_time&&/^\d/.test(p.event_time)?' · '+esc(p.event_time):''}<span>Orden del día ›</span></a>`:'';
+ const plenoOrden=p?niOrderLink(p):'',plenoTxt=p?`★ Pleno ${esc(niRelDay(p.event_date).toLowerCase())}${p.event_time&&/^\d/.test(p.event_time)?' · '+esc(p.event_time):''}`:'';
+ const plenoLine=p&&p.event_date<=plusDaysISO(hoy,7)?(plenoOrden?`<a class="nh-pleno" href="${esc(plenoOrden)}" target="_blank" rel="noopener">${plenoTxt}<span>Orden del día ›</span></a>`:`<div class="nh-pleno">${plenoTxt}<span>Orden del día pendiente</span></div>`):'';
  const tiles=[
   `<button type="button" class="nh-tile" data-tab="Agenda"><b>${today.length}</b><small>Agenda hoy</small></button>`,
   `<a class="nh-tile ${deadlines.length?'warn':''}" href="#nh-plazos"><b>${deadlines.length}</b><small>Plazos</small></a>`,
